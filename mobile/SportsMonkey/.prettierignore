@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+*.bundle.js
+*.bundle.js.map
+.expo/
+.expo-shared/
+web-build/
+*.log
+.DS_Store
+
