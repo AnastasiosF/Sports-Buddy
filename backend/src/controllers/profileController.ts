@@ -5,8 +5,9 @@ import { ProfileSetupRequest } from '@sports-buddy/shared-types';
 export const getProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const authClient = req.supabaseAuth || supabase;
 
-    const { data, error } = await supabase
+    const { data, error } = await authClient
       .from('profiles')
       .select(`
         *,
@@ -99,19 +100,23 @@ export const addUserSport = async (req: Request, res: Response) => {
 
     // Get user ID from authenticated request
     const user_id = req.user?.id;
+    const authClient = req.supabaseAuth || supabase;
 
     if (!user_id) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { data, error } = await supabase
+    // Use upsert to handle duplicates
+    const { data, error } = await authClient
       .from('user_sports')
-      .insert([{
+      .upsert([{
         user_id,
         sport_id,
-        skill_level,
+        skill_level: skill_level || 'intermediate',
         preferred: preferred || false,
-      }])
+      }], {
+        onConflict: 'user_id,sport_id'
+      })
       .select(`
         *,
         sport:sports (*)
@@ -130,9 +135,15 @@ export const addUserSport = async (req: Request, res: Response) => {
 
 export const removeUserSport = async (req: Request, res: Response) => {
   try {
-    const { user_id, sport_id } = req.params;
+    const { sport_id } = req.params;
+    const user_id = req.user?.id;
+    const authClient = req.supabaseAuth || supabase;
 
-    const { error } = await supabase
+    if (!user_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { error } = await authClient
       .from('user_sports')
       .delete()
       .eq('user_id', user_id)
@@ -143,6 +154,80 @@ export const removeUserSport = async (req: Request, res: Response) => {
     }
 
     res.json({ message: 'Sport removed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const updateUserSports = async (req: Request, res: Response) => {
+  try {
+    console.log('=== UPDATE USER SPORTS DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('User from token:', req.user);
+    console.log('Has authClient:', !!req.supabaseAuth);
+    console.log('Authorization header:', req.headers.authorization);
+    
+    const { sport_ids, skill_level } = req.body;
+    const user_id = req.user?.id;
+    const authClient = req.supabaseAuth || supabase;
+
+    if (!user_id) {
+      console.log('ERROR: No user_id found');
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!Array.isArray(sport_ids)) {
+      console.log('ERROR: sport_ids is not an array:', sport_ids);
+      return res.status(400).json({ error: 'sport_ids must be an array' });
+    }
+
+    // First, remove all existing sports for the user
+    console.log('Attempting to delete existing sports for user:', user_id);
+    const { error: deleteError } = await authClient
+      .from('user_sports')
+      .delete()
+      .eq('user_id', user_id);
+
+    if (deleteError) {
+      console.log('DELETE ERROR:', deleteError);
+      return res.status(400).json({ error: deleteError.message });
+    }
+    console.log('Successfully deleted existing sports');
+
+    // Then add the new sports if any were provided
+    if (sport_ids.length > 0) {
+      const sportInserts = sport_ids.map(sport_id => ({
+        user_id,
+        sport_id,
+        skill_level: skill_level || 'intermediate',
+        preferred: true,
+      }));
+
+      console.log('Attempting to insert sports:', sportInserts);
+      const { data, error: insertError } = await authClient
+        .from('user_sports')
+        .insert(sportInserts)
+        .select(`
+          *,
+          sport:sports (*)
+        `);
+
+      if (insertError) {
+        console.log('INSERT ERROR:', insertError);
+        return res.status(400).json({ error: insertError.message });
+      }
+      console.log('Successfully inserted sports:', data);
+
+      res.json({ 
+        message: 'User sports updated successfully',
+        sports: data 
+      });
+    } else {
+      res.json({ 
+        message: 'All sports removed successfully',
+        sports: [] 
+      });
+    }
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

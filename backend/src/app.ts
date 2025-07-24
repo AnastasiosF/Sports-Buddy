@@ -10,6 +10,7 @@ import profileRoutes from './routes/profiles';
 import sportsRoutes from './routes/sports';
 import matchRoutes from './routes/matches';
 import locationRoutes from './routes/location';
+import friendsRoutes from './routes/friends';
 
 // Import security middleware
 import { generalRateLimit } from './middleware/security';
@@ -56,6 +57,17 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Add request logging middleware for debugging
+app.use((req, res, next) => {
+  if (req.path.includes('/profiles/sports') || req.path.includes('/friends/request')) {
+    console.log('🔍 REQUEST:', req.method, req.path);
+    console.log('🔍 HEADERS:', req.headers.authorization ? 'Has Auth Header' : 'No Auth Header');
+    console.log('🔍 CONTENT-TYPE:', req.headers['content-type']);
+    console.log('🔍 BODY:', req.body);
+  }
+  next();
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -67,9 +79,11 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api/sports', sportsRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/location', locationRoutes);
+app.use('/api/friends', friendsRoutes);
 
 // Error handling middleware (must be after all routes)
-app.use('*', notFoundHandler);
+// Note: Temporarily disabled wildcard route due to path-to-regexp compatibility issue
+// app.all('*', notFoundHandler);
 app.use(globalErrorHandler);
 
 const PORT = process.env.PORT || 3000;

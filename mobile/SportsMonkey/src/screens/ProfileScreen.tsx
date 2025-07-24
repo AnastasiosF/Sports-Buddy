@@ -6,18 +6,22 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Button, Avatar, ListItem, Card } from 'react-native-elements';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Profile } from '@sports-buddy/shared-types';
+import { profileService } from '../services/profileService';
+import { FriendRequestNotification } from '../components';
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { user, signOut, profile } = useAuth();
+  const { user, signOut, profile, updateProfile } = useAuth();
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     // In a real app, you'd fetch the full profile data here
@@ -25,6 +29,33 @@ export const ProfileScreen: React.FC = () => {
     setUserProfile(profile);
     setLoading(false);
   }, [profile]);
+
+  // Refresh profile data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setUserProfile(profile);
+      setLoading(false);
+    }, [profile])
+  );
+
+  const onRefresh = async () => {
+    if (!user?.id) return;
+    
+    setRefreshing(true);
+    try {
+      // Fetch fresh profile data
+      const freshProfile = await profileService.getProfile(user.id);
+      setUserProfile(freshProfile);
+      
+      // Update the auth context with fresh data
+      await updateProfile({});
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
+      Alert.alert('Refresh Failed', 'Unable to refresh profile data. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -57,7 +88,19 @@ export const ProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+      <FriendRequestNotification />
+      <ScrollView 
+        style={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2196F3']} // Android
+            tintColor="#2196F3" // iOS
+          />
+        }
+      >
       {[
         /* Header */
         <View key="header" style={styles.header}>
@@ -115,7 +158,7 @@ export const ProfileScreen: React.FC = () => {
         /* Profile Details */
         <Card key="details-card" containerStyle={styles.detailsCard}>
         <Text style={styles.sectionTitle}>Profile Details</Text>
-        
+
         <ListItem key="age" bottomDivider>
           <Ionicons name="calendar-outline" size={20} color="#666" />
           <ListItem.Content>
@@ -131,8 +174,8 @@ export const ProfileScreen: React.FC = () => {
           <ListItem.Content>
             <ListItem.Title>Skill Level</ListItem.Title>
             <ListItem.Subtitle style={styles.skillLevel}>
-              {userProfile?.skill_level ? 
-                userProfile.skill_level.charAt(0).toUpperCase() + userProfile.skill_level.slice(1) 
+              {userProfile?.skill_level ?
+                userProfile.skill_level.charAt(0).toUpperCase() + userProfile.skill_level.slice(1)
                 : 'Not specified'
               }
             </ListItem.Subtitle>
@@ -149,14 +192,36 @@ export const ProfileScreen: React.FC = () => {
           </ListItem.Content>
         </ListItem>
 
-        <ListItem key="sports">
+        <ListItem key="sports" bottomDivider>
           <Ionicons name="basketball-outline" size={20} color="#666" />
           <ListItem.Content>
             <ListItem.Title>Preferred Sports</ListItem.Title>
             <ListItem.Subtitle>
               {userProfile?.user_sports && userProfile.user_sports.length > 0
-                ? `${userProfile.user_sports.length} sport(s) selected`
-                : 'No sports selected'
+                ? userProfile.user_sports
+                    .filter(userSport => userSport.preferred)
+                    .map(userSport => userSport.sport?.name || 'Unknown Sport')
+                    .join(', ') || 'No preferred sports'
+                : 'No preferred sports'
+              }
+            </ListItem.Subtitle>
+          </ListItem.Content>
+        </ListItem>
+
+        <ListItem key="skill">
+          <Ionicons name="trending-up-outline" size={20} color="#666" />
+          <ListItem.Content>
+            <ListItem.Title>Sports Skills</ListItem.Title>
+            <ListItem.Subtitle>
+              {userProfile?.user_sports && userProfile.user_sports.length > 0
+                ? userProfile.user_sports
+                    .map(userSport => {
+                      const sportName = userSport.sport?.name || 'Unknown';
+                      const skillLevel = userSport.skill_level || 'intermediate';
+                      return `${sportName}: ${skillLevel.charAt(0).toUpperCase() + skillLevel.slice(1)}`;
+                    })
+                    .join(' • ')
+                : 'No skill levels set'
               }
             </ListItem.Subtitle>
           </ListItem.Content>
@@ -166,7 +231,7 @@ export const ProfileScreen: React.FC = () => {
         /* App Settings */
         <Card key="settings-card" containerStyle={styles.settingsCard}>
           <Text style={styles.sectionTitle}>App Settings</Text>
-          
+
           <TouchableOpacity key="notifications" style={styles.settingItem}>
             <Ionicons name="notifications-outline" size={20} color="#666" />
             <Text style={styles.settingText}>Notifications</Text>
@@ -205,7 +270,8 @@ export const ProfileScreen: React.FC = () => {
 
         <View key="bottom-spacer" style={styles.bottomSpacer} />
       ]}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -213,6 +279,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContainer: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -222,7 +291,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#2196F3',
-    paddingTop: 50,
+    paddingTop: 15,
     paddingBottom: 15,
     paddingHorizontal: 20,
     elevation: 4,
@@ -239,6 +308,7 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     margin: 15,
+    marginBottom: 20,
     borderRadius: 10,
     elevation: 3,
     shadowColor: '#000',
@@ -299,6 +369,7 @@ const styles = StyleSheet.create({
   detailsCard: {
     margin: 15,
     marginTop: 0,
+    marginBottom: 15,
     borderRadius: 10,
     elevation: 3,
     shadowColor: '#000',
@@ -318,6 +389,7 @@ const styles = StyleSheet.create({
   settingsCard: {
     margin: 15,
     marginTop: 0,
+    marginBottom: 15,
     borderRadius: 10,
     elevation: 3,
     shadowColor: '#000',

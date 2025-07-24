@@ -5,6 +5,7 @@ import {
   searchProfiles,
   addUserSport,
   removeUserSport,
+  updateUserSports,
   setupProfile
 } from '../controllers/profileController';
 import { authenticateUser, verifyResourceOwnership, optionalAuth } from '../middleware/auth';
@@ -14,12 +15,17 @@ const router = Router();
 
 // Public/optional auth routes
 router.get('/search', searchRateLimit, optionalAuth, searchProfiles);
-router.get('/:id', optionalAuth, getProfile);
+
+// Protected sports routes (must come before /:id route)
+router.post('/sports', authenticateUser, addUserSport);
+router.put('/sports', authenticateUser, updateUserSports);
+router.delete('/sports/:sport_id', authenticateUser, removeUserSport);
 
 // Protected routes requiring authentication
-router.put('/:id', authenticateUser, verifyResourceOwnership('id'), updateProfile);
 router.post('/setup', authenticateUser, setupProfile);
-router.post('/sports', authenticateUser, addUserSport);
-router.delete('/sports/:sport_id', authenticateUser, removeUserSport);
+router.put('/:id', authenticateUser, verifyResourceOwnership('id'), updateProfile);
+
+// Generic profile route (must come last)
+router.get('/:id', optionalAuth, getProfile);
 
 export default router;

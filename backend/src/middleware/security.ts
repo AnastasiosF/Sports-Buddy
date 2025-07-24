@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import { Request, Response, NextFunction } from 'express';
 
@@ -86,7 +86,7 @@ export const searchRateLimit = rateLimit({
 });
 
 // Slow down middleware for repeated requests (progressive delays)
-export const speedLimiter = slowDown({
+export const speedLimiter: RateLimitRequestHandler = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 50, // Allow 50 requests per windowMs without delay
   delayMs: () => 500, // Fixed delay of 500ms per request after delayAfter

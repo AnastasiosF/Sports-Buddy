@@ -13,6 +13,7 @@ import { useLocation } from '../contexts/LocationContext';
 import { locationService } from '../services/locationService';
 import { sportsService } from '../services/sportsService';
 import { matchService } from '../services/matchService';
+import { FriendRequestNotification } from '../components';
 import { Match, Sport, formatDistance, formatDateTime, formatDuration } from '../types';
 
 interface NearbyMatch extends Match {
@@ -202,6 +203,7 @@ export const NearbyMatchesScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <FriendRequestNotification />
       <View style={styles.header}>
         <Text h4 style={styles.title}>Find Nearby Matches</Text>
         
@@ -209,6 +211,7 @@ export const NearbyMatchesScreen: React.FC = () => {
           placeholder="Search matches..."
           value={searchText}
           onChangeText={setSearchText}
+          returnKeyType="search"
           containerStyle={styles.searchContainer}
           inputContainerStyle={styles.searchInput}
         />
@@ -294,7 +297,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: 'white',
     padding: 15,
-    paddingTop: 50,
+    paddingTop: 15,
   },
   title: {
     textAlign: 'center',

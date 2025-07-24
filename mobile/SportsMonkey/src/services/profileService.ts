@@ -41,7 +41,16 @@ export const profileService = {
   },
 
   // Remove sport from user profile
-  removeUserSport: async (userId: string, sportId: string): Promise<void> => {
-    return api.delete<void>(`/api/profiles/${userId}/sports/${sportId}`);
+  removeUserSport: async (sportId: string): Promise<void> => {
+    return api.delete<void>(`/api/profiles/sports/${sportId}`);
+  },
+
+  // Update user sports in bulk
+  updateUserSports: async (sportIds: string[], skillLevel?: string): Promise<UserSport[]> => {
+    const response = await api.put<{ message: string; sports: UserSport[] }>('/api/profiles/sports', {
+      sport_ids: sportIds,
+      skill_level: skillLevel,
+    });
+    return response.sports;
   },
 };

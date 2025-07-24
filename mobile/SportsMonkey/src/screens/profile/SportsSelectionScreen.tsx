@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
 import { 
   Text, 
   Button, 
@@ -28,6 +28,7 @@ export const SportsSelectionScreen: React.FC = () => {
   const [sports, setSports] = useState<SportSelection[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const skillLevels: SkillLevel[] = ['beginner', 'intermediate', 'advanced', 'expert'];
   const skillLevelButtons = skillLevels.map(level => level.charAt(0).toUpperCase() + level.slice(1));
@@ -78,28 +79,33 @@ export const SportsSelectionScreen: React.FC = () => {
     ));
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadSports();
+    setRefreshing(false);
+  };
+
   const handleSaveSelections = async () => {
     const selectedSports = sports.filter(item => item.selected);
     
-    if (selectedSports.length === 0) {
-      Alert.alert('Selection Required', 'Please select at least one sport to continue.');
-      return;
-    }
-
     setSaving(true);
     try {
-      // Add each selected sport to user profile
-      for (const selection of selectedSports) {
-        await profileService.addUserSport(
-          selection.sport.id,
-          selection.skillLevel,
-          selection.preferred
-        );
-      }
+      // Use bulk update endpoint
+      const sportIds = selectedSports.map(selection => selection.sport.id);
+      
+      // For now, we'll use a general skill level for all sports
+      // Individual skill levels per sport will be a future enhancement
+      const generalSkillLevel = selectedSports.length > 0 ? selectedSports[0].skillLevel : 'intermediate';
+      
+      await profileService.updateUserSports(sportIds, generalSkillLevel);
+
+      const message = selectedSports.length === 0 
+        ? 'All sports have been removed from your profile.'
+        : `${selectedSports.length} sport${selectedSports.length !== 1 ? 's' : ''} saved to your profile!`;
 
       Alert.alert(
         'Success!', 
-        'Your sports preferences have been saved.',
+        message,
         [
           {
             text: 'Continue',
@@ -210,16 +216,24 @@ export const SportsSelectionScreen: React.FC = () => {
           keyExtractor={(item) => item.sport.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#2196F3']} // Android
+              tintColor="#2196F3" // iOS
+            />
+          }
         />
 
         <View style={styles.footer}>
           <Button
-            title={saving ? "Saving..." : "Save Selections"}
+            title={saving ? "Saving..." : selectedCount === 0 ? "Clear All Sports" : "Save Selections"}
             onPress={handleSaveSelections}
-            disabled={selectedCount === 0 || saving}
+            disabled={saving}
             buttonStyle={[
               styles.saveButton,
-              (selectedCount === 0 || saving) && styles.disabledButton
+              saving && styles.disabledButton
             ]}
             loading={saving}
           />

@@ -4,14 +4,18 @@ import { supabase, supabaseAdmin } from '../config/supabase';
 // Send friend request
 export const sendFriendRequest = async (req: Request, res: Response) => {
   try {
+    console.log('🔍 FRIEND REQUEST - Body:', req.body);
+    console.log('🔍 FRIEND REQUEST - Content-Type:', req.headers['content-type']);
+    
     const user_id = req.user?.id;
-    const { friend_id } = req.body;
+    const { friend_id } = req.body || {};
 
     if (!user_id) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     if (!friend_id) {
+      console.log('❌ FRIEND REQUEST - Missing friend_id. Body:', req.body);
       return res.status(400).json({ error: 'Friend ID is required' });
     }
 

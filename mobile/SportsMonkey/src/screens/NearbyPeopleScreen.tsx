@@ -23,9 +23,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocation } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useFriends } from '../contexts/FriendsContext';
 import { locationService } from '../services/locationService';
 import { sportsService } from '../services/sportsService';
-import { friendsService } from '../services/friendsService';
+import { FriendRequestNotification } from '../components';
 import { 
   Profile, 
   Sport, 
@@ -56,9 +57,16 @@ const { width } = Dimensions.get('window');
 export const NearbyPeopleScreen: React.FC = () => {
   const { location, loading: locationLoading, updateLocation } = useLocation();
   const { user, session } = useAuth();
+  const { 
+    friends, 
+    pendingRequests, 
+    acceptFriendRequest, 
+    rejectFriendRequest, 
+    sendFriendRequest, 
+    removeFriend,
+    refreshAll 
+  } = useFriends();
   const [users, setUsers] = useState<NearbyUser[]>([]);
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,6 +79,7 @@ export const NearbyPeopleScreen: React.FC = () => {
   const [filterAnimation] = useState(new Animated.Value(0));
   const [activeTab, setActiveTab] = useState(0); // 0: Nearby, 1: Friends, 2: Search
   const [isSearching, setIsSearching] = useState(false);
+  const [nearbySearchText, setNearbySearchText] = useState('');
 
   const sportOptions = ['All Sports', ...sports.map(sport => sport.name)];
   const skillLevels = ['Any Level', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
@@ -78,11 +87,7 @@ export const NearbyPeopleScreen: React.FC = () => {
 
   useEffect(() => {
     loadSports();
-    if (session) {
-      loadFriends();
-      loadPendingRequests();
-    }
-  }, [session]);
+  }, []);
 
   useEffect(() => {
     if (location && activeTab === 0) {
@@ -91,13 +96,14 @@ export const NearbyPeopleScreen: React.FC = () => {
   }, [location, selectedSportIndex, skillLevelIndex, searchRadius, activeTab]);
 
   useEffect(() => {
-    if (activeTab === 2 && searchText.length >= 4) {
+    if (activeTab === 2 && searchText.length >= 3) {
       const timeoutId = setTimeout(() => {
         handleUserSearch();
-      }, 500);
+      }, 800); // Increased debounce time for better UX
       return () => clearTimeout(timeoutId);
-    } else if (activeTab === 2 && searchText.length < 4) {
+    } else if (activeTab === 2 && searchText.length < 3) {
       setSearchResults([]);
+      setIsSearching(false);
     }
   }, [searchText, activeTab]);
 
@@ -110,27 +116,6 @@ export const NearbyPeopleScreen: React.FC = () => {
     }
   };
 
-  const loadFriends = async () => {
-    if (!session?.access_token) return;
-    
-    try {
-      const response = await friendsService.getFriends(session.access_token);
-      setFriends(response.friends);
-    } catch (error) {
-      console.error('Failed to load friends:', error);
-    }
-  };
-
-  const loadPendingRequests = async () => {
-    if (!session?.access_token) return;
-    
-    try {
-      const response = await friendsService.getPendingRequests(session.access_token);
-      setPendingRequests(response.requests);
-    } catch (error) {
-      console.error('Failed to load pending requests:', error);
-    }
-  };
 
   const searchNearbyUsers = async () => {
     if (!location) {
@@ -158,12 +143,14 @@ export const NearbyPeopleScreen: React.FC = () => {
     }
   };
 
-  const handleUserSearch = async () => {
-    if (!session?.access_token || searchText.length < 4) return;
+  const handleUserSearch = async (forceSearch = false) => {
+    if (!session?.access_token || (!forceSearch && searchText.length < 3)) return;
 
     setIsSearching(true);
     try {
-      const response = await friendsService.searchUsers(searchText, session.access_token);
+      // Import friendsService locally for this function since it's not in context
+      const { friendsService } = await import('../services/friendsService');
+      const response = await friendsService.searchUsers(searchText.trim(), session.access_token);
       setSearchResults(response.users);
     } catch (error) {
       console.error('Failed to search users:', error);
@@ -173,11 +160,15 @@ export const NearbyPeopleScreen: React.FC = () => {
     }
   };
 
-  const handleSendFriendRequest = async (friendId: string) => {
-    if (!session?.access_token) return;
+  const handleSearchSubmit = () => {
+    if (activeTab === 2 && searchText.trim().length >= 2) {
+      handleUserSearch(true);
+    }
+  };
 
+  const handleSendFriendRequest = async (friendId: string) => {
     try {
-      await friendsService.sendFriendRequest({ friend_id: friendId }, session.access_token);
+      await sendFriendRequest(friendId);
       Alert.alert('Success', 'Friend request sent!');
       
       // Update search results
@@ -186,36 +177,25 @@ export const NearbyPeopleScreen: React.FC = () => {
           ? { ...user, relationship_status: 'request_sent' }
           : user
       ));
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to send friend request');
     }
   };
 
   const handleAcceptFriendRequest = async (connectionId: string) => {
-    if (!session?.access_token) return;
-
     try {
-      await friendsService.acceptFriendRequest(connectionId, session.access_token);
+      await acceptFriendRequest(connectionId);
       Alert.alert('Success', 'Friend request accepted!');
-      
-      // Reload friends and pending requests
-      loadFriends();
-      loadPendingRequests();
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to accept friend request');
     }
   };
 
   const handleRejectFriendRequest = async (connectionId: string) => {
-    if (!session?.access_token) return;
-
     try {
-      await friendsService.rejectFriendRequest(connectionId, session.access_token);
+      await rejectFriendRequest(connectionId);
       Alert.alert('Success', 'Friend request rejected');
-      
-      // Reload pending requests
-      loadPendingRequests();
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to reject friend request');
     }
   };
@@ -233,10 +213,9 @@ export const NearbyPeopleScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await friendsService.removeFriend(friendId, session.access_token);
+              await removeFriend(friendId);
               Alert.alert('Success', 'Friend removed');
-              loadFriends();
-            } catch (error) {
+            } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to remove friend');
             }
           }
@@ -263,13 +242,12 @@ export const NearbyPeopleScreen: React.FC = () => {
       await updateLocation();
       await searchNearbyUsers();
     } else if (activeTab === 1) {
-      await loadFriends();
-      await loadPendingRequests();
-    } else if (activeTab === 2 && searchText.length >= 4) {
+      await refreshAll();
+    } else if (activeTab === 2 && searchText.length >= 3) {
       await handleUserSearch();
     }
     setRefreshing(false);
-  }, [location, selectedSportIndex, skillLevelIndex, searchRadius, activeTab, searchText]);
+  }, [location, selectedSportIndex, skillLevelIndex, searchRadius, activeTab, searchText, updateLocation, searchNearbyUsers, refreshAll, handleUserSearch]);
 
   const getSkillLevelColor = (level: string) => {
     switch (level.toLowerCase()) {
@@ -397,8 +375,9 @@ export const NearbyPeopleScreen: React.FC = () => {
         <View style={styles.actionButtons}>
           <Button
             title="View Profile"
-            buttonStyle={[styles.actionButton, styles.viewButton]}
-            titleStyle={styles.viewButtonText}
+            type="clear"
+            buttonStyle={styles.actionButton}
+            titleStyle={styles.clearButtonText}
             icon={<Ionicons name="person-outline" size={16} color="#2196F3" style={{ marginRight: 5 }} />}
             onPress={() => console.log('View profile:', profile.id)}
           />
@@ -499,27 +478,30 @@ export const NearbyPeopleScreen: React.FC = () => {
       
       {activeTab === 2 ? (
         <SearchBar
-          placeholder="Search by username..."
+          placeholder="Search by username... (Press enter to search)"
           value={searchText}
           onChangeText={setSearchText}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
           containerStyle={styles.searchContainer}
           inputContainerStyle={styles.searchInput}
           inputStyle={styles.searchInputText}
-          searchIcon={{ size: 20, color: '#666' }}
-          clearIcon={{ size: 20, color: '#666' }}
+          searchIcon={{ name: 'search', size: 20, color: '#666' }}
+          clearIcon={{ name: 'clear', size: 20, color: '#666' }}
           showLoading={isSearching}
         />
       ) : activeTab === 0 && (
         <>
           <SearchBar
             placeholder="Search by name or location..."
-            value={searchText}
-            onChangeText={setSearchText}
+            value={nearbySearchText}
+            onChangeText={setNearbySearchText}
+            returnKeyType="search"
             containerStyle={styles.searchContainer}
             inputContainerStyle={styles.searchInput}
             inputStyle={styles.searchInputText}
-            searchIcon={{ size: 20, color: '#666' }}
-            clearIcon={{ size: 20, color: '#666' }}
+            searchIcon={{ name: 'search', size: 20, color: '#666' }}
+            clearIcon={{ name: 'clear', size: 20, color: '#666' }}
             showLoading={loading}
           />
 
@@ -554,9 +536,10 @@ export const NearbyPeopleScreen: React.FC = () => {
             ]}
           >
             <View style={styles.filterSection}>
-              <Text style={styles.filterLabel}>
-                <Icon name="sports" size={16} color="#666" /> Sport
-              </Text>
+              <View style={styles.filterLabelContainer}>
+                <Icon name="sports" size={16} color="#666" />
+                <Text style={styles.filterLabel}>Sport</Text>
+              </View>
               <ButtonGroup
                 buttons={sportOptions.map(option => option.length > 8 ? option.substring(0, 8) + '...' : option)}
                 selectedIndex={selectedSportIndex}
@@ -570,9 +553,10 @@ export const NearbyPeopleScreen: React.FC = () => {
             </View>
 
             <View style={styles.filterSection}>
-              <Text style={styles.filterLabel}>
-                <Icon name="trending-up" size={16} color="#666" /> Skill Level
-              </Text>
+              <View style={styles.filterLabelContainer}>
+                <Icon name="trending-up" size={16} color="#666" />
+                <Text style={styles.filterLabel}>Skill Level</Text>
+              </View>
               <ButtonGroup
                 buttons={skillLevels.map(level => level.split(' ')[0])}
                 selectedIndex={skillLevelIndex}
@@ -585,10 +569,10 @@ export const NearbyPeopleScreen: React.FC = () => {
             </View>
 
             <View style={styles.filterSection}>
-              <Text style={styles.filterLabel}>
-                <Icon name="location-on" size={16} color="#666" /> 
-                Search Radius: {formatDistance(searchRadius)}
-              </Text>
+              <View style={styles.filterLabelContainer}>
+                <Icon name="location-on" size={16} color="#666" />
+                <Text style={styles.filterLabel}>Search Radius: {formatDistance(searchRadius)}</Text>
+              </View>
               <Slider
                 value={searchRadius}
                 onValueChange={setSearchRadius}
@@ -598,7 +582,7 @@ export const NearbyPeopleScreen: React.FC = () => {
                 thumbStyle={styles.sliderThumb}
                 trackStyle={styles.sliderTrack}
                 minimumTrackTintColor="#2196F3"
-                containerStyle={styles.slider}
+                style={styles.slider}
               />
               <View style={styles.sliderLabels}>
                 <Text style={styles.sliderLabel}>1km</Text>
@@ -614,10 +598,10 @@ export const NearbyPeopleScreen: React.FC = () => {
   const getCurrentData = () => {
     if (activeTab === 0) {
       return users.filter(user => 
-        searchText === '' || 
-        user.username.toLowerCase().includes(searchText.toLowerCase()) ||
-        user.full_name?.toLowerCase().includes(searchText.toLowerCase()) ||
-        user.location_name?.toLowerCase().includes(searchText.toLowerCase())
+        nearbySearchText === '' || 
+        user.username.toLowerCase().includes(nearbySearchText.toLowerCase()) ||
+        user.full_name?.toLowerCase().includes(nearbySearchText.toLowerCase()) ||
+        user.location_name?.toLowerCase().includes(nearbySearchText.toLowerCase())
       );
     } else if (activeTab === 1) {
       return friends;
@@ -633,7 +617,7 @@ export const NearbyPeopleScreen: React.FC = () => {
           <Ionicons name="people-outline" size={64} color="#ccc" />
           <Text style={styles.emptyTitle}>No Sports Buddies Found</Text>
           <Text style={styles.emptyText}>
-            {searchText || selectedSportIndex > 0 || skillLevelIndex > 0
+            {nearbySearchText || selectedSportIndex > 0 || skillLevelIndex > 0
               ? 'Try adjusting your search filters or expanding your search radius'
               : 'No one is nearby right now. Try increasing your search radius or check back later'
             }
@@ -667,11 +651,11 @@ export const NearbyPeopleScreen: React.FC = () => {
         <View style={styles.emptyContainer}>
           <Ionicons name="search-outline" size={64} color="#ccc" />
           <Text style={styles.emptyTitle}>
-            {searchText.length < 4 ? 'Start Searching' : 'No Users Found'}
+            {searchText.length < 3 ? 'Start Searching' : 'No Users Found'}
           </Text>
           <Text style={styles.emptyText}>
-            {searchText.length < 4 
-              ? 'Type at least 4 characters to search for users'
+            {searchText.length < 3 
+              ? 'Type at least 3 characters or press enter to search for users'
               : 'No users found matching your search. Try a different username.'
             }
           </Text>
@@ -694,6 +678,7 @@ export const NearbyPeopleScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <FriendRequestNotification />
       <FlatList
         data={activeTab === 1 && pendingRequests.length > 0 
           ? [...pendingRequests, ...getCurrentData()]
@@ -760,7 +745,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: 'white',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -853,13 +838,16 @@ const styles = StyleSheet.create({
   filterSection: {
     marginVertical: 10,
   },
+  filterLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   filterLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 8,
     color: '#333',
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginLeft: 8,
   },
   buttonGroup: {
     marginBottom: 5,
@@ -995,12 +983,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
   },
-  viewButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#2196F3',
-  },
-  viewButtonText: {
+  clearButtonText: {
     color: '#2196F3',
     fontSize: 14,
     fontWeight: '600',

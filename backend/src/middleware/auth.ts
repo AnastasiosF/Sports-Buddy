@@ -11,6 +11,7 @@ declare global {
         aud: string;
         role?: string;
       };
+      supabaseAuth?: any; // Authenticated Supabase client
     }
   }
 }
@@ -18,20 +19,28 @@ declare global {
 // Middleware to verify Supabase JWT token
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('🔐 AUTH MIDDLEWARE - Path:', req.path);
+    console.log('🔐 AUTH MIDDLEWARE - Headers:', req.headers.authorization ? 'Has Auth Header' : 'No Auth Header');
+    
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('🔐 AUTH ERROR: Missing or invalid authorization header');
       return res.status(401).json({ error: 'Missing or invalid authorization header' });
     }
 
     const token = authHeader.split(' ')[1];
+    console.log('🔐 AUTH MIDDLEWARE - Token length:', token ? token.length : 0);
     
     // Verify the JWT token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
     
     if (error || !user) {
+      console.log('🔐 AUTH ERROR: Token verification failed:', error?.message || 'No user found');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
+    
+    console.log('🔐 AUTH SUCCESS: User verified:', user.id);
 
     // Add user information to request object
     req.user = {
@@ -40,6 +49,20 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
       aud: user.aud,
       role: user.role,
     };
+
+    // Create authenticated Supabase client with the user's token
+    const { createClient } = require('@supabase/supabase-js');
+    req.supabaseAuth = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      {
+        global: {
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
 
     next();
   } catch (error) {
@@ -51,17 +74,27 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
 // Middleware to verify user owns the resource (for profile updates, etc.)
 export const verifyResourceOwnership = (userIdParam: string = 'id') => {
   return (req: Request, res: Response, next: NextFunction) => {
+    console.log('🔒 OWNERSHIP CHECK - Path:', req.path);
+    console.log('🔒 OWNERSHIP CHECK - User ID param:', userIdParam);
+    console.log('🔒 OWNERSHIP CHECK - Params:', req.params);
+    
     const resourceUserId = req.params[userIdParam];
     const authenticatedUserId = req.user?.id;
 
+    console.log('🔒 OWNERSHIP CHECK - Resource User ID:', resourceUserId);
+    console.log('🔒 OWNERSHIP CHECK - Authenticated User ID:', authenticatedUserId);
+
     if (!authenticatedUserId) {
+      console.log('🔒 OWNERSHIP ERROR: No authenticated user');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     if (resourceUserId !== authenticatedUserId) {
+      console.log('🔒 OWNERSHIP ERROR: User ID mismatch');
       return res.status(403).json({ error: 'Access denied: insufficient permissions' });
     }
 
+    console.log('🔒 OWNERSHIP SUCCESS: User owns resource');
     next();
   };
 };

@@ -7,7 +7,6 @@ import {
   Avatar,
   Header,
   ButtonGroup,
-  Slider,
   Divider
 } from 'react-native-elements';
 import { useNavigation } from '@react-navigation/native';
@@ -27,7 +26,7 @@ interface ProfileFormData {
 
 export const ProfileSetupScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const { user, updateProfile: refreshProfile } = useAuth();
   const { location, updateLocation } = useLocation();
 
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -179,22 +178,22 @@ export const ProfileSetupScreen: React.FC = () => {
         }
       }
 
-      // Update user sports if any are selected
-      if (selectedSports.length > 0) {
-        try {
-          // Add each selected sport individually
-          for (const sportId of selectedSports) {
-            await profileService.addUserSport(
-              sportId,
-              formData.skill_level,
-              true // preferred
-            );
-          }
-          console.log('User sports updated successfully');
-        } catch (sportsError) {
-          console.warn('Failed to update sports, but profile was saved:', sportsError);
-          // Don't fail the whole operation if sports update fails
-        }
+      // Update user sports using bulk endpoint
+      try {
+        await profileService.updateUserSports(selectedSports, formData.skill_level);
+        console.log('User sports updated successfully');
+      } catch (sportsError) {
+        console.warn('Failed to update sports, but profile was saved:', sportsError);
+        // Don't fail the whole operation if sports update fails
+      }
+
+      // Refresh the profile in AuthContext so other screens get updated data
+      try {
+        await refreshProfile(profileUpdates);
+        console.log('Profile refreshed in AuthContext');
+      } catch (refreshError) {
+        console.warn('Failed to refresh profile in context:', refreshError);
+        // Don't fail the operation if context refresh fails
       }
 
       Alert.alert(
@@ -291,19 +290,19 @@ export const ProfileSetupScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Details</Text>
 
-          <View style={styles.sliderContainer}>
-            <Text style={styles.sliderLabel}>
-              Age: {Math.round(formData.age)} years old
-            </Text>
-            <Slider
-              value={formData.age}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, age: value }))}
-              minimumValue={13}
-              maximumValue={80}
-              step={1}
-              style={styles.slider}
-            />
-          </View>
+          <Input
+            label="Age *"
+            value={formData.age.toString()}
+            onChangeText={(text) => {
+              const age = parseInt(text) || 0;
+              setFormData(prev => ({ ...prev, age: age }));
+            }}
+            placeholder="Enter your age"
+            keyboardType="numeric"
+            containerStyle={styles.inputContainer}
+            inputContainerStyle={styles.inputInnerContainer}
+            leftIcon={{ name: 'cake', color: '#666' }}
+          />
 
           <View style={styles.skillLevelContainer}>
             <Text style={styles.skillLevelLabel}>Overall Skill Level:</Text>
@@ -328,36 +327,68 @@ export const ProfileSetupScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Preferred Sports</Text>
 
           {loadingSports ? (
-            <Text style={styles.loadingText}>Loading sports...</Text>
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading sports...</Text>
+            </View>
           ) : (
             <>
               <Text style={styles.sportsNote}>
-                Select the sports you're interested in playing:
+                Select the sports you're interested in playing. You can choose multiple sports:
               </Text>
 
               <View style={styles.sportsContainer}>
-                {sports.map((sport) => (
-                  <TouchableOpacity
-                    key={sport.id}
-                    style={[
-                      styles.sportChip,
-                      selectedSports.includes(sport.id) && styles.selectedSportChip
-                    ]}
-                    onPress={() => toggleSportSelection(sport.id)}
-                  >
-                    <Text style={[
-                      styles.sportChipText,
-                      selectedSports.includes(sport.id) && styles.selectedSportChipText
-                    ]}>
-                      {sport.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {sports.map((sport) => {
+                  const isSelected = selectedSports.includes(sport.id);
+                  return (
+                    <TouchableOpacity
+                      key={sport.id}
+                      style={[
+                        styles.sportChip,
+                        isSelected && styles.selectedSportChip
+                      ]}
+                      onPress={() => toggleSportSelection(sport.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.sportChipText,
+                        isSelected && styles.selectedSportChipText
+                      ]}>
+                        {isSelected ? '✓ ' : ''}{sport.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              <Text style={styles.selectedSportsText}>
-                {selectedSports.length} sport{selectedSports.length !== 1 ? 's' : ''} selected
-              </Text>
+              <View style={styles.selectionSummary}>
+                <Text style={styles.selectedSportsText}>
+                  {selectedSports.length === 0 
+                    ? 'No sports selected (you can add them later)' 
+                    : `${selectedSports.length} sport${selectedSports.length !== 1 ? 's' : ''} selected`}
+                </Text>
+                {selectedSports.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.clearAllButton}
+                    onPress={() => setSelectedSports([])}
+                  >
+                    <Text style={styles.clearAllText}>Clear All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={styles.advancedSportsButton}
+                onPress={() => {
+                  Alert.alert('Coming Soon', 'Advanced sports selection will be available in a future update.');
+                }}
+              >
+                <Text style={styles.advancedSportsText}>
+                  ⚙️ Advanced Sports Selection
+                </Text>
+                <Text style={styles.advancedSportsSubtext}>
+                  Set individual skill levels and preferences
+                </Text>
+              </TouchableOpacity>
             </>
           )}
         </View>
@@ -459,24 +490,6 @@ const styles = StyleSheet.create({
     height: 80,
     paddingTop: 10,
   },
-  sliderContainer: {
-    marginBottom: 20,
-  },
-  sliderLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  slider: {
-    marginHorizontal: 10,
-  },
-  sliderThumb: {
-    backgroundColor: '#2196F3',
-  },
-  sliderTrack: {
-    backgroundColor: '#e0e0e0',
-  },
   skillLevelContainer: {
     marginBottom: 10,
   },
@@ -539,11 +552,14 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
   },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
   loadingText: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    marginVertical: 20,
   },
   sportsNote: {
     fontSize: 14,
@@ -576,10 +592,48 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  selectionSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
   selectedSportsText: {
     fontSize: 12,
     color: '#2196F3',
     fontWeight: 'bold',
+    flex: 1,
+  },
+  clearAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 15,
+    marginLeft: 10,
+  },
+  clearAllText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  advancedSportsButton: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 15,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  advancedSportsText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2196F3',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  advancedSportsSubtext: {
+    fontSize: 12,
+    color: '#666',
     textAlign: 'center',
   },
 });
