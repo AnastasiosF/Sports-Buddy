@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  FlatList, 
-  RefreshControl, 
-  Alert, 
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  Alert,
   TouchableOpacity,
   Animated,
-  Dimensions 
+  Dimensions
 } from 'react-native';
-import { 
-  Text, 
-  Card, 
-  Button, 
-  SearchBar, 
-  Avatar, 
+import {
+  Text,
+  Card,
+  Button,
+  SearchBar,
+  Avatar,
   Badge,
   ButtonGroup,
   Slider,
@@ -27,13 +27,13 @@ import { useFriends } from '../contexts/FriendsContext';
 import { locationService } from '../services/locationService';
 import { sportsService } from '../services/sportsService';
 import { FriendRequestNotification } from '../components';
-import { 
-  Profile, 
-  Sport, 
+import {
+  Profile,
+  Sport,
   UserSearchResult,
-  formatDistance, 
-  getInitials, 
-  capitalize 
+  formatDistance,
+  getInitials,
+  capitalize
 } from '@sports-buddy/shared-types';
 
 interface NearbyUser extends Profile {
@@ -57,14 +57,14 @@ const { width } = Dimensions.get('window');
 export const NearbyPeopleScreen: React.FC = () => {
   const { location, loading: locationLoading, updateLocation } = useLocation();
   const { user, session } = useAuth();
-  const { 
-    friends, 
-    pendingRequests, 
-    acceptFriendRequest, 
-    rejectFriendRequest, 
-    sendFriendRequest, 
+  const {
+    friends,
+    pendingRequests,
+    acceptFriendRequest,
+    rejectFriendRequest,
+    sendFriendRequest,
     removeFriend,
-    refreshAll 
+    refreshAll
   } = useFriends();
   const [users, setUsers] = useState<NearbyUser[]>([]);
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
@@ -170,10 +170,10 @@ export const NearbyPeopleScreen: React.FC = () => {
     try {
       await sendFriendRequest(friendId);
       Alert.alert('Success', 'Friend request sent!');
-      
+
       // Update search results
-      setSearchResults(prev => prev.map(user => 
-        user.id === friendId 
+      setSearchResults(prev => prev.map(user =>
+        user.id === friendId
           ? { ...user, relationship_status: 'request_sent' }
           : user
       ));
@@ -227,7 +227,7 @@ export const NearbyPeopleScreen: React.FC = () => {
   const toggleFilters = () => {
     const toValue = showFilters ? 0 : 1;
     setShowFilters(!showFilters);
-    
+
     Animated.spring(filterAnimation, {
       toValue,
       useNativeDriver: false,
@@ -267,7 +267,7 @@ export const NearbyPeopleScreen: React.FC = () => {
             <Button
               title="Friends"
               buttonStyle={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
-              titleStyle={{ color: 'white', fontSize: 14 }}
+              titleStyle={{ color: 'white', fontSize: 20 }}
               disabled
               icon={<Ionicons name="checkmark" size={16} color="white" style={{ marginRight: 5 }} />}
             />
@@ -319,7 +319,7 @@ export const NearbyPeopleScreen: React.FC = () => {
   const renderUserItem = ({ item }: { item: NearbyUser | UserSearchResult | Friend }) => {
     const profile = 'friend' in item ? item.friend : item;
     const isNearbyUser = 'distance' in item;
-    
+
     return (
       <Card containerStyle={styles.userCard}>
         <View style={styles.cardHeader}>
@@ -343,7 +343,7 @@ export const NearbyPeopleScreen: React.FC = () => {
               <View style={styles.locationContainer}>
                 <Icon name="location-on" size={16} color="#666" />
                 <Text style={styles.distance}>
-                  {isNearbyUser 
+                  {isNearbyUser
                     ? `${formatDistance((item as NearbyUser).distance)} away`
                     : profile.location_name || 'Location not set'
                   }
@@ -351,7 +351,7 @@ export const NearbyPeopleScreen: React.FC = () => {
               </View>
             </View>
           </View>
-          
+
           <View style={styles.badges}>
             {profile.skill_level && (
               <Badge
@@ -365,7 +365,7 @@ export const NearbyPeopleScreen: React.FC = () => {
             )}
           </View>
         </View>
-        
+
         {profile.bio && (
           <View style={styles.bioContainer}>
             <Text style={styles.bio} numberOfLines={3}>{profile.bio}</Text>
@@ -381,7 +381,7 @@ export const NearbyPeopleScreen: React.FC = () => {
             icon={<Ionicons name="person-outline" size={16} color="#2196F3" style={{ marginRight: 5 }} />}
             onPress={() => console.log('View profile:', profile.id)}
           />
-          
+
           {activeTab === 1 ? (
             <Button
               title="Remove"
@@ -445,7 +445,7 @@ export const NearbyPeopleScreen: React.FC = () => {
     <View style={styles.header}>
       <View style={styles.titleContainer}>
         <Text style={styles.title}>
-          {activeTab === 0 ? 'Find Sports Buddies' : 
+          {activeTab === 0 ? 'Find Sports Buddies' :
            activeTab === 1 ? 'My Friends' : 'Search Friends'}
         </Text>
         <Text style={styles.subtitle}>
@@ -475,7 +475,7 @@ export const NearbyPeopleScreen: React.FC = () => {
           </Text>
         </View>
       )}
-      
+
       {activeTab === 2 ? (
         <SearchBar
           placeholder="Search by username... (Press enter to search)"
@@ -597,8 +597,8 @@ export const NearbyPeopleScreen: React.FC = () => {
 
   const getCurrentData = () => {
     if (activeTab === 0) {
-      return users.filter(user => 
-        nearbySearchText === '' || 
+      return users.filter(user =>
+        nearbySearchText === '' ||
         user.username.toLowerCase().includes(nearbySearchText.toLowerCase()) ||
         user.full_name?.toLowerCase().includes(nearbySearchText.toLowerCase()) ||
         user.location_name?.toLowerCase().includes(nearbySearchText.toLowerCase())
@@ -654,7 +654,7 @@ export const NearbyPeopleScreen: React.FC = () => {
             {searchText.length < 3 ? 'Start Searching' : 'No Users Found'}
           </Text>
           <Text style={styles.emptyText}>
-            {searchText.length < 3 
+            {searchText.length < 3
               ? 'Type at least 3 characters or press enter to search for users'
               : 'No users found matching your search. Try a different username.'
             }
@@ -680,7 +680,7 @@ export const NearbyPeopleScreen: React.FC = () => {
     <View style={styles.container}>
       <FriendRequestNotification />
       <FlatList
-        data={activeTab === 1 && pendingRequests.length > 0 
+        data={activeTab === 1 && pendingRequests.length > 0
           ? [...pendingRequests, ...getCurrentData()]
           : getCurrentData()
         }
@@ -688,13 +688,13 @@ export const NearbyPeopleScreen: React.FC = () => {
           if (activeTab === 1 && index < pendingRequests.length) {
             return renderPendingRequest({ item: item as PendingRequest });
           }
-          return renderUserItem({ 
-            item: activeTab === 1 && pendingRequests.length > 0 
+          return renderUserItem({
+            item: activeTab === 1 && pendingRequests.length > 0
               ? (getCurrentData()[index - pendingRequests.length] as Friend)
               : item as NearbyUser | UserSearchResult | Friend
           });
         }}
-        keyExtractor={(item, index) => 
+        keyExtractor={(item, index) =>
           activeTab === 1 && index < pendingRequests.length
             ? `request-${(item as PendingRequest).id}`
             : `user-${('friend' in item ? item.friend.id : item.id)}-${index}`
@@ -954,8 +954,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   skillBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginVertical: 0,
     borderRadius: 12,
   },
   badgeText: {
@@ -981,7 +981,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 5,
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   clearButtonText: {
     color: '#2196F3',
