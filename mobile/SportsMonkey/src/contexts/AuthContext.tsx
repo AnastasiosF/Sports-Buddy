@@ -205,7 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshTokenWithData = async (refreshToken: string): Promise<boolean> => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/refresh`, {
+      const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.45:3000';
+      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

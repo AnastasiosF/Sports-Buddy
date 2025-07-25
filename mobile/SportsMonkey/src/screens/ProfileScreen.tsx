@@ -101,14 +101,13 @@ export const ProfileScreen: React.FC = () => {
           />
         }
       >
-      {[
-        /* Header */
-        <View key="header" style={styles.header}>
+        {/* Header */}
+        <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
-        </View>,
+        </View>
 
-        /* Profile Card */
-        <Card key="profile-card" containerStyle={styles.profileCard}>
+        {/* Profile Card */}
+        <Card containerStyle={styles.profileCard}>
           <View style={styles.profileHeader}>
             <Avatar
               size="large"
@@ -153,107 +152,106 @@ export const ProfileScreen: React.FC = () => {
               />
             }
           />
-        </Card>,
+        </Card>
 
-        /* Profile Details */
-        <Card key="details-card" containerStyle={styles.detailsCard}>
-        <Text style={styles.sectionTitle}>Profile Details</Text>
+        {/* Profile Details */}
+        <Card containerStyle={styles.detailsCard}>
+          <Text style={styles.sectionTitle}>Profile Details</Text>
 
-        <ListItem key="age" bottomDivider>
-          <Ionicons name="calendar-outline" size={20} color="#666" />
-          <ListItem.Content>
-            <ListItem.Title>Age</ListItem.Title>
-            <ListItem.Subtitle>
-              {userProfile?.age ? `${userProfile.age} years old` : 'Not specified'}
-            </ListItem.Subtitle>
-          </ListItem.Content>
-        </ListItem>
+          <ListItem bottomDivider>
+            <Ionicons name="calendar-outline" size={20} color="#666" />
+            <ListItem.Content>
+              <ListItem.Title>Age</ListItem.Title>
+              <ListItem.Subtitle>
+                {userProfile?.age ? `${userProfile.age} years old` : 'Not specified'}
+              </ListItem.Subtitle>
+            </ListItem.Content>
+          </ListItem>
 
-        <ListItem key="skill-level" bottomDivider>
-          <Ionicons name="trophy-outline" size={20} color="#666" />
-          <ListItem.Content>
-            <ListItem.Title>Skill Level</ListItem.Title>
-            <ListItem.Subtitle style={styles.skillLevel}>
-              {userProfile?.skill_level ?
-                userProfile.skill_level.charAt(0).toUpperCase() + userProfile.skill_level.slice(1)
-                : 'Not specified'
-              }
-            </ListItem.Subtitle>
-          </ListItem.Content>
-        </ListItem>
+          <ListItem bottomDivider>
+            <Ionicons name="trophy-outline" size={20} color="#666" />
+            <ListItem.Content>
+              <ListItem.Title>Skill Level</ListItem.Title>
+              <ListItem.Subtitle style={styles.skillLevel}>
+                {userProfile?.skill_level ?
+                  userProfile.skill_level.charAt(0).toUpperCase() + userProfile.skill_level.slice(1)
+                  : 'Not specified'
+                }
+              </ListItem.Subtitle>
+            </ListItem.Content>
+          </ListItem>
 
-        <ListItem key="location" bottomDivider>
-          <Ionicons name="location-outline" size={20} color="#666" />
-          <ListItem.Content>
-            <ListItem.Title>Location</ListItem.Title>
-            <ListItem.Subtitle>
-              {userProfile?.location_name || 'Location not set'}
-            </ListItem.Subtitle>
-          </ListItem.Content>
-        </ListItem>
+          <ListItem bottomDivider>
+            <Ionicons name="location-outline" size={20} color="#666" />
+            <ListItem.Content>
+              <ListItem.Title>Location</ListItem.Title>
+              <ListItem.Subtitle>
+                {userProfile?.location_name || 'Location not set'}
+              </ListItem.Subtitle>
+            </ListItem.Content>
+          </ListItem>
 
-        <ListItem key="sports" bottomDivider>
-          <Ionicons name="basketball-outline" size={20} color="#666" />
-          <ListItem.Content>
-            <ListItem.Title>Preferred Sports</ListItem.Title>
-            <ListItem.Subtitle>
-              {userProfile?.user_sports && userProfile.user_sports.length > 0
-                ? userProfile.user_sports
-                    .filter(userSport => userSport.preferred)
-                    .map(userSport => userSport.sport?.name || 'Unknown Sport')
-                    .join(', ') || 'No preferred sports'
-                : 'No preferred sports'
-              }
-            </ListItem.Subtitle>
-          </ListItem.Content>
-        </ListItem>
+          <ListItem bottomDivider>
+            <Ionicons name="basketball-outline" size={20} color="#666" />
+            <ListItem.Content>
+              <ListItem.Title>Preferred Sports</ListItem.Title>
+              <ListItem.Subtitle>
+                {userProfile?.user_sports && userProfile.user_sports.length > 0
+                  ? userProfile.user_sports
+                      .filter(userSport => userSport.preferred)
+                      .map(userSport => userSport.sport?.name || 'Unknown Sport')
+                      .join(', ') || 'No preferred sports'
+                  : 'No preferred sports'
+                }
+              </ListItem.Subtitle>
+            </ListItem.Content>
+          </ListItem>
 
-        <ListItem key="skill">
-          <Ionicons name="trending-up-outline" size={20} color="#666" />
-          <ListItem.Content>
-            <ListItem.Title>Sports Skills</ListItem.Title>
-            <ListItem.Subtitle>
-              {userProfile?.user_sports && userProfile.user_sports.length > 0
-                ? userProfile.user_sports
-                    .map(userSport => {
-                      const sportName = userSport.sport?.name || 'Unknown';
-                      const skillLevel = userSport.skill_level || 'intermediate';
-                      return `${sportName}: ${skillLevel.charAt(0).toUpperCase() + skillLevel.slice(1)}`;
-                    })
-                    .join(' • ')
-                : 'No skill levels set'
-              }
-            </ListItem.Subtitle>
-          </ListItem.Content>
-        </ListItem>
-        </Card>,
+          <ListItem>
+            <Ionicons name="trending-up-outline" size={20} color="#666" />
+            <ListItem.Content>
+              <ListItem.Title>Sports Skills</ListItem.Title>
+              <ListItem.Subtitle>
+                {userProfile?.user_sports && userProfile.user_sports.length > 0
+                  ? userProfile.user_sports
+                      .map(userSport => {
+                        const sportName = userSport.sport?.name || 'Unknown';
+                        const skillLevel = userSport.skill_level || 'intermediate';
+                        return `${sportName}: ${skillLevel.charAt(0).toUpperCase() + skillLevel.slice(1)}`;
+                      })
+                      .join(' • ')
+                  : 'No skill levels set'
+                }
+              </ListItem.Subtitle>
+            </ListItem.Content>
+          </ListItem>
+        </Card>
 
-        /* App Settings */
-        <Card key="settings-card" containerStyle={styles.settingsCard}>
+        {/* App Settings */}
+        <Card containerStyle={styles.settingsCard}>
           <Text style={styles.sectionTitle}>App Settings</Text>
 
-          <TouchableOpacity key="notifications" style={styles.settingItem}>
+          <TouchableOpacity style={styles.settingItem}>
             <Ionicons name="notifications-outline" size={20} color="#666" />
             <Text style={styles.settingText}>Notifications</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity key="privacy" style={styles.settingItem}>
+          <TouchableOpacity style={styles.settingItem}>
             <Ionicons name="shield-outline" size={20} color="#666" />
             <Text style={styles.settingText}>Privacy Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity key="help" style={styles.settingItem}>
+          <TouchableOpacity style={styles.settingItem}>
             <Ionicons name="help-circle-outline" size={20} color="#666" />
             <Text style={styles.settingText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
-        </Card>,
+        </Card>
 
-        /* Sign Out Button */
+        {/* Sign Out Button */}
         <Button
-          key="sign-out-button"
           title="Sign Out"
           buttonStyle={styles.signOutButton}
           titleStyle={styles.signOutButtonText}
@@ -266,10 +264,9 @@ export const ProfileScreen: React.FC = () => {
               style={{ marginRight: 8 }}
             />
           }
-        />,
+        />
 
-        <View key="bottom-spacer" style={styles.bottomSpacer} />
-      ]}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </View>
   );
