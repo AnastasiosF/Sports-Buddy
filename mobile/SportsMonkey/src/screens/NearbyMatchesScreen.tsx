@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
 import { 
   Text, 
@@ -8,8 +8,9 @@ import {
   Badge,
   ButtonGroup,
   Slider
-} from 'react-native-elements';
+} from '@rneui/themed';
 import { useLocation } from '../contexts/LocationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { locationService } from '../services/locationService';
 import { sportsService } from '../services/sportsService';
 import { matchService } from '../services/matchService';
@@ -22,7 +23,9 @@ interface NearbyMatch extends Match {
 
 export const NearbyMatchesScreen: React.FC = () => {
   const { location, loading: locationLoading, updateLocation } = useLocation();
+  const { user } = useAuth();
   const [matches, setMatches] = useState<NearbyMatch[]>([]);
+  const [userMatches, setUserMatches] = useState<{ created: Match[], participated: Match[] }>({ created: [], participated: [] });
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -30,19 +33,27 @@ export const NearbyMatchesScreen: React.FC = () => {
   const [selectedSportIndex, setSelectedSportIndex] = useState(0);
   const [skillLevelIndex, setSkillLevelIndex] = useState(0);
   const [searchRadius, setSearchRadius] = useState(10000); // 10km default
+  const [activeTab, setActiveTab] = useState(0);
 
   const sportOptions = ['All Sports', ...sports.map(sport => sport.name)];
   const skillLevels = ['Any Level', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
+  const tabs = ['Nearby', 'My Created', 'My Joined'];
+
+  // Memoize icon objects to prevent SearchBar re-renders
+  const searchIcon = useMemo(() => ({ name: 'search', size: 20, color: '#666' }), []);
+  const clearIcon = useMemo(() => ({ name: 'clear', size: 20, color: '#666' }), []);
 
   useEffect(() => {
     loadSports();
   }, []);
 
   useEffect(() => {
-    if (location) {
+    if (location && activeTab === 0) {
       searchNearbyMatches();
+    } else if (activeTab === 1 || activeTab === 2) {
+      loadUserMatches();
     }
-  }, [location, selectedSportIndex, skillLevelIndex, searchRadius]);
+  }, [location, selectedSportIndex, skillLevelIndex, searchRadius, activeTab]);
 
   const loadSports = async () => {
     try {
@@ -62,15 +73,14 @@ export const NearbyMatchesScreen: React.FC = () => {
     setLoading(true);
     try {
       const params = {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        radius: searchRadius,
+        location: `${location.latitude},${location.longitude}`,
+        radius: searchRadius.toString(),
         sport_id: selectedSportIndex > 0 ? sports[selectedSportIndex - 1]?.id : undefined,
-        skill_level: skillLevelIndex > 0 ? skillLevels[skillLevelIndex].toLowerCase() as any : undefined,
+        skill_level: skillLevelIndex > 0 ? skillLevels[skillLevelIndex].toLowerCase() : undefined,
       };
 
-      const response = await locationService.findNearbyMatches(params);
-      setMatches(response.matches);
+      const matchesData = await matchService.getMatches(params);
+      setMatches(matchesData);
     } catch (error) {
       console.error('Failed to search nearby matches:', error);
       Alert.alert('Search Failed', 'Unable to find nearby matches. Please try again.');
@@ -79,12 +89,29 @@ export const NearbyMatchesScreen: React.FC = () => {
     }
   };
 
+  const loadUserMatches = async () => {
+    try {
+      setLoading(true);
+      const userMatchesData = await matchService.getUserMatches();
+      setUserMatches(userMatchesData);
+    } catch (error) {
+      console.error('Failed to load user matches:', error);
+      Alert.alert('Load Failed', 'Unable to load your matches. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await updateLocation();
-    await searchNearbyMatches();
+    if (activeTab === 0) {
+      await updateLocation();
+      await searchNearbyMatches();
+    } else {
+      await loadUserMatches();
+    }
     setRefreshing(false);
-  }, [location, selectedSportIndex, skillLevelIndex, searchRadius]);
+  }, [activeTab, location, selectedSportIndex, skillLevelIndex, searchRadius]);
 
   const filteredMatches = matches.filter(match => 
     searchText === '' || 
@@ -93,6 +120,45 @@ export const NearbyMatchesScreen: React.FC = () => {
     match.location_name.toLowerCase().includes(searchText.toLowerCase()) ||
     match.sport?.name.toLowerCase().includes(searchText.toLowerCase())
   );
+
+  const getCurrentData = () => {
+    switch (activeTab) {
+      case 0:
+        return filteredMatches;
+      case 1:
+        return userMatches.created;
+      case 2:
+        return userMatches.participated;
+      default:
+        return [];
+    }
+  };
+
+  const getCurrentEmptyMessage = () => {
+    if (loading) {
+      switch (activeTab) {
+        case 0:
+          return 'Searching for matches nearby...';
+        case 1:
+          return 'Loading your created matches...';
+        case 2:
+          return 'Loading your joined matches...';
+        default:
+          return 'Loading...';
+      }
+    }
+    
+    switch (activeTab) {
+      case 0:
+        return 'No matches found in your area';
+      case 1:
+        return 'You haven\'t created any matches yet';
+      case 2:
+        return 'You haven\'t joined any matches yet';
+      default:
+        return 'No matches found';
+    }
+  };
 
   const handleJoinMatch = async (matchId: string) => {
     try {
@@ -205,57 +271,73 @@ export const NearbyMatchesScreen: React.FC = () => {
     <View style={styles.container}>
       <FriendRequestNotification />
       <View style={styles.header}>
-        <Text h4 style={styles.title}>Find Nearby Matches</Text>
+        <Text h4 style={styles.title}>Matches</Text>
         
-        <SearchBar
-          placeholder="Search matches..."
-          value={searchText}
-          onChangeText={setSearchText}
-          returnKeyType="search"
-          containerStyle={styles.searchContainer}
-          inputContainerStyle={styles.searchInput}
-        />
-
-        <Text style={styles.filterLabel}>Sport:</Text>
         <ButtonGroup
-          buttons={sportOptions}
-          selectedIndex={selectedSportIndex}
-          onPress={setSelectedSportIndex}
-          containerStyle={styles.buttonGroup}
-          buttonStyle={styles.filterButton}
-          textStyle={styles.buttonText}
-          selectedButtonStyle={styles.selectedButton}
-          innerBorderStyle={styles.buttonBorder}
+          buttons={tabs}
+          selectedIndex={activeTab}
+          onPress={setActiveTab}
+          containerStyle={styles.tabContainer}
+          selectedButtonStyle={styles.selectedTab}
+          textStyle={styles.tabText}
+          selectedTextStyle={styles.selectedTabText}
         />
+        
+        {activeTab === 0 && (
+          <>
+            <SearchBar
+              placeholder="Search matches..."
+              value={searchText}
+              onChangeText={(text: string) => setSearchText(text)}
+              returnKeyType="search"
+              containerStyle={styles.searchContainer}
+              inputContainerStyle={styles.searchInput}
+              searchIcon={searchIcon}
+              clearIcon={clearIcon}
+            />
 
-        <Text style={styles.filterLabel}>Skill Level:</Text>
-        <ButtonGroup
-          buttons={skillLevels}
-          selectedIndex={skillLevelIndex}
-          onPress={setSkillLevelIndex}
-          containerStyle={styles.buttonGroup}
-          buttonStyle={styles.filterButton}
-          textStyle={styles.buttonText}
-          selectedButtonStyle={styles.selectedButton}
-        />
+            <Text style={styles.filterLabel}>Sport:</Text>
+            <ButtonGroup
+              buttons={sportOptions}
+              selectedIndex={selectedSportIndex}
+              onPress={setSelectedSportIndex}
+              containerStyle={styles.buttonGroup}
+              buttonStyle={styles.filterButton}
+              textStyle={styles.buttonText}
+              selectedButtonStyle={styles.selectedButton}
+              innerBorderStyle={styles.buttonBorder}
+            />
 
-        <Text style={styles.filterLabel}>
-          Search Radius: {formatDistance(searchRadius)}
-        </Text>
-        <Slider
-          value={searchRadius}
-          onValueChange={setSearchRadius}
-          minimumValue={1000} // 1km
-          maximumValue={50000} // 50km
-          step={1000}
-          thumbStyle={styles.sliderThumb}
-          trackStyle={styles.sliderTrack}
-          containerStyle={styles.slider}
-        />
+            <Text style={styles.filterLabel}>Skill Level:</Text>
+            <ButtonGroup
+              buttons={skillLevels}
+              selectedIndex={skillLevelIndex}
+              onPress={setSkillLevelIndex}
+              containerStyle={styles.buttonGroup}
+              buttonStyle={styles.filterButton}
+              textStyle={styles.buttonText}
+              selectedButtonStyle={styles.selectedButton}
+            />
+
+            <Text style={styles.filterLabel}>
+              Search Radius: {formatDistance(searchRadius)}
+            </Text>
+            <Slider
+              value={searchRadius}
+              onValueChange={setSearchRadius}
+              minimumValue={1000} // 1km
+              maximumValue={50000} // 50km
+              step={1000}
+              thumbStyle={styles.sliderThumb}
+              trackStyle={styles.sliderTrack}
+              containerStyle={styles.slider}
+            />
+          </>
+        )}
       </View>
 
       <FlatList
-        data={filteredMatches}
+        data={getCurrentData()}
         renderItem={renderMatchItem}
         keyExtractor={(item) => item.id}
         refreshControl={
@@ -267,7 +349,7 @@ export const NearbyMatchesScreen: React.FC = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
-              {loading ? 'Searching for matches nearby...' : 'No matches found in your area'}
+              {getCurrentEmptyMessage()}
             </Text>
             {!loading && (
               <Button
@@ -303,6 +385,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: '#2196F3',
+  },
+  tabContainer: {
+    marginBottom: 15,
+    borderRadius: 25,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 0,
+    marginHorizontal: 10,
+  },
+  selectedTab: {
+    backgroundColor: '#2196F3',
+    borderRadius: 25,
+  },
+  tabText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  selectedTabText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   searchContainer: {
     backgroundColor: 'transparent',

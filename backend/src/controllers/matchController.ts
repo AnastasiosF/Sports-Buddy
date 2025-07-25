@@ -1,10 +1,67 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 
+/**
+ * GET /api/matches
+ * 
+ * Retrieves matches with optional filtering and location-based proximity search.
+ * This endpoint supports both general match listing and nearby matches functionality.
+ * 
+ * Query Parameters:
+ * - location (string, optional): User's location in "latitude,longitude" format (e.g., "37.7749,-122.4194")
+ * - radius (number, optional): Search radius in meters. Default: 10000 (10km)
+ * - sport_id (string, optional): Filter matches by specific sport ID
+ * - skill_level (string, optional): Filter by required skill level ('beginner', 'intermediate', 'advanced', 'expert')
+ * - status (string, optional): Filter by match status. Default: 'open'
+ * 
+ * Features:
+ * - Location-based filtering: When location is provided, calculates distances and filters by radius
+ * - Distance calculation: Uses Haversine formula for accurate distance computation
+ * - Sorting: Results sorted by distance when location is provided, otherwise by scheduled_at
+ * - Sport and skill filtering: Supports filtering by sport type and skill level requirements
+ * - Future matches only: Only returns matches scheduled for future dates
+ * 
+ * Response Format:
+ * {
+ *   "matches": [
+ *     {
+ *       "id": "uuid",
+ *       "title": "string",
+ *       "description": "string",
+ *       "location": "POINT(lng lat)", // PostGIS format
+ *       "location_name": "string",
+ *       "scheduled_at": "ISO 8601 datetime",
+ *       "duration": number, // minutes
+ *       "max_participants": number,
+ *       "skill_level_required": "string",
+ *       "status": "string",
+ *       "created_at": "ISO 8601 datetime",
+ *       "distance": number, // meters (only when location provided)
+ *       "sport": { "id": "uuid", "name": "string", ... },
+ *       "creator": { "id": "uuid", "username": "string", ... },
+ *       "participants": [
+ *         {
+ *           "user_id": "uuid",
+ *           "status": "confirmed|pending",
+ *           "user": { "id": "uuid", "username": "string", ... }
+ *         }
+ *       ]
+ *     }
+ *   ]
+ * }
+ * 
+ * Authentication: Optional (public endpoint with optional user context)
+ * Rate Limiting: Applied (search rate limit)
+ * 
+ * Error Responses:
+ * - 400: Bad request (invalid parameters)
+ * - 500: Internal server error
+ */
 export const getMatches = async (req: Request, res: Response) => {
   try {
     const { location, radius = 10000, sport_id, skill_level, status = 'open' } = req.query;
 
+    // Base query
     let query = supabase
       .from('matches')
       .select(`
@@ -17,8 +74,7 @@ export const getMatches = async (req: Request, res: Response) => {
         )
       `)
       .eq('status', status)
-      .gte('scheduled_at', new Date().toISOString())
-      .order('scheduled_at');
+      .gte('scheduled_at', new Date().toISOString());
 
     // Add sport filtering if provided
     if (sport_id) {
@@ -30,18 +86,136 @@ export const getMatches = async (req: Request, res: Response) => {
       query = query.eq('skill_level_required', skill_level);
     }
 
-    const { data, error } = await query.limit(50);
+    const { data, error } = await query
+      .order('scheduled_at')
+      .limit(100); // Get more matches for filtering
 
     if (error) {
       return res.status(400).json({ error: error.message });
     }
 
-    res.json(data);
+    let matches = data || [];
+    
+    // If location was provided, calculate distances and filter by radius
+    if (location && typeof location === 'string') {
+      const [userLat, userLng] = location.split(',').map(Number);
+      
+      if (!isNaN(userLat) && !isNaN(userLng)) {
+        matches = matches
+          .map(match => {
+            // Extract coordinates from PostGIS POINT format
+            if (match.location) {
+              // Parse "POINT(lng lat)" format
+              const pointMatch = match.location.match(/POINT\(([^)]+)\)/);
+              if (pointMatch) {
+                const [matchLng, matchLat] = pointMatch[1].split(' ').map(Number);
+                
+                // Calculate distance using Haversine formula
+                const distance = calculateDistance(userLat, userLng, matchLat, matchLng);
+                
+                return {
+                  ...match,
+                  distance: Math.round(distance)
+                };
+              }
+            }
+            return { ...match, distance: Infinity };
+          })
+          .filter(match => match.distance <= Number(radius)) // Filter by radius
+          .sort((a, b) => a.distance - b.distance) // Sort by distance
+          .slice(0, 50); // Limit results
+      }
+    }
+
+    res.json({ matches });
   } catch (error) {
+    console.error('Error in getMatches:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
+// Haversine formula to calculate distance between two points
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRadians(degrees: number): number {
+  return degrees * (Math.PI / 180);
+}
+
+/**
+ * GET /api/matches/:id
+ * 
+ * Retrieves detailed information about a specific match by ID.
+ * Returns comprehensive match data including participants, creator info, and sport details.
+ * 
+ * Path Parameters:
+ * - id (string, required): Unique identifier of the match (UUID format)
+ * 
+ * Response Format:
+ * {
+ *   "id": "uuid",
+ *   "title": "string",
+ *   "description": "string",
+ *   "location": "POINT(lng lat)", // PostGIS format
+ *   "location_name": "string",
+ *   "scheduled_at": "ISO 8601 datetime",
+ *   "duration": number, // minutes
+ *   "max_participants": number,
+ *   "skill_level_required": "string",
+ *   "status": "open|full|completed|cancelled",
+ *   "created_at": "ISO 8601 datetime",
+ *   "updated_at": "ISO 8601 datetime",
+ *   "created_by": "uuid",
+ *   "sport": {
+ *     "id": "uuid",
+ *     "name": "string",
+ *     "description": "string",
+ *     "icon": "string"
+ *   },
+ *   "creator": {
+ *     "id": "uuid",
+ *     "username": "string",
+ *     "full_name": "string",
+ *     "avatar_url": "string"
+ *   },
+ *   "participants": [
+ *     {
+ *       "match_id": "uuid",
+ *       "user_id": "uuid",
+ *       "status": "confirmed|pending",
+ *       "joined_at": "ISO 8601 datetime",
+ *       "user": {
+ *         "id": "uuid",
+ *         "username": "string",
+ *         "full_name": "string",
+ *         "avatar_url": "string"
+ *       }
+ *     }
+ *   ]
+ * }
+ * 
+ * Authentication: Optional (public endpoint with optional user context)
+ * Rate Limiting: None
+ * 
+ * Use Cases:
+ * - View match details before joining
+ * - Display match information in mobile app
+ * - Check current participants and availability
+ * 
+ * Error Responses:
+ * - 404: Match not found
+ * - 500: Internal server error
+ */
 export const getMatch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -70,6 +244,75 @@ export const getMatch = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /api/matches
+ * 
+ * Creates a new sports match. The authenticated user becomes the match creator and is automatically
+ * added as a confirmed participant.
+ * 
+ * Request Body:
+ * {
+ *   "sport_id": "uuid", // Required: ID of the sport
+ *   "title": "string", // Required: Match title/name
+ *   "description": "string", // Optional: Match description
+ *   "location": [longitude, latitude], // Required: Location coordinates as array
+ *   "location_name": "string", // Required: Human-readable location name
+ *   "scheduled_at": "ISO 8601 datetime", // Required: When the match is scheduled
+ *   "duration": number, // Optional: Duration in minutes (default: 60)
+ *   "max_participants": number, // Optional: Maximum participants (default: 2)
+ *   "skill_level_required": "any|beginner|intermediate|advanced|expert" // Optional: Required skill level (default: "any")
+ * }
+ * 
+ * Features:
+ * - Automatically adds creator as confirmed participant
+ * - Converts location array to PostGIS POINT format for database storage
+ * - Validates required fields
+ * - Returns complete match data with related information
+ * 
+ * Response Format:
+ * {
+ *   "id": "uuid",
+ *   "created_by": "uuid",
+ *   "sport_id": "uuid",
+ *   "title": "string",
+ *   "description": "string",
+ *   "location": "POINT(lng lat)",
+ *   "location_name": "string",
+ *   "scheduled_at": "ISO 8601 datetime",
+ *   "duration": number,
+ *   "max_participants": number,
+ *   "skill_level_required": "string",
+ *   "status": "open",
+ *   "created_at": "ISO 8601 datetime",
+ *   "sport": {
+ *     "id": "uuid",
+ *     "name": "string",
+ *     "description": "string",
+ *     "icon": "string"
+ *   },
+ *   "creator": {
+ *     "id": "uuid",
+ *     "username": "string",
+ *     "full_name": "string",
+ *     "avatar_url": "string"
+ *   }
+ * }
+ * 
+ * Authentication: Required (JWT token)
+ * Rate Limiting: Applied (match creation rate limit)
+ * 
+ * Business Rules:
+ * - Match creator is automatically added as confirmed participant
+ * - Location must be provided as [longitude, latitude] array
+ * - Duration defaults to 60 minutes if not specified
+ * - Max participants defaults to 2 if not specified
+ * - Status is automatically set to "open"
+ * 
+ * Error Responses:
+ * - 400: Bad request (invalid/missing required fields)
+ * - 401: Authentication required
+ * - 500: Internal server error
+ */
 export const createMatch = async (req: Request, res: Response) => {
   try {
     const {
@@ -134,6 +377,83 @@ export const createMatch = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * PUT /api/matches/:id
+ * 
+ * Updates an existing match. Only the match creator can update their matches.
+ * Supports partial updates - only provided fields will be updated.
+ * 
+ * Path Parameters:
+ * - id (string, required): Unique identifier of the match to update
+ * 
+ * Request Body (all fields optional for partial update):
+ * {
+ *   "sport_id": "uuid", // Sport ID
+ *   "title": "string", // Match title/name
+ *   "description": "string", // Match description
+ *   "location": [longitude, latitude], // Location coordinates as array
+ *   "location_name": "string", // Human-readable location name
+ *   "scheduled_at": "ISO 8601 datetime", // When the match is scheduled
+ *   "duration": number, // Duration in minutes
+ *   "max_participants": number, // Maximum participants
+ *   "skill_level_required": "any|beginner|intermediate|advanced|expert", // Required skill level
+ *   "status": "open|full|completed|cancelled" // Match status
+ * }
+ * 
+ * Features:
+ * - Partial updates: Only send fields that need to be changed
+ * - Location conversion: Automatically converts location array to PostGIS format
+ * - Creator validation: Only match creator can update the match
+ * - Undefined field filtering: Removes undefined values before update
+ * 
+ * Response Format:
+ * {
+ *   "id": "uuid",
+ *   "created_by": "uuid",
+ *   "sport_id": "uuid",
+ *   "title": "string",
+ *   "description": "string",
+ *   "location": "POINT(lng lat)",
+ *   "location_name": "string",
+ *   "scheduled_at": "ISO 8601 datetime",
+ *   "duration": number,
+ *   "max_participants": number,
+ *   "skill_level_required": "string",
+ *   "status": "string",
+ *   "created_at": "ISO 8601 datetime",
+ *   "updated_at": "ISO 8601 datetime",
+ *   "sport": {
+ *     "id": "uuid",
+ *     "name": "string",
+ *     "description": "string",
+ *     "icon": "string"
+ *   },
+ *   "creator": {
+ *     "id": "uuid",
+ *     "username": "string",
+ *     "full_name": "string",
+ *     "avatar_url": "string"
+ *   }
+ * }
+ * 
+ * Authentication: Required (JWT token)
+ * Authorization: Only match creator can update
+ * Rate Limiting: None
+ * Middleware: verifyMatchCreator ensures user owns the match
+ * 
+ * Use Cases:
+ * - Change match time or location
+ * - Update participant limits
+ * - Modify skill level requirements
+ * - Cancel or complete matches
+ * 
+ * Error Responses:
+ * - 400: Bad request (invalid data)
+ * - 401: Authentication required
+ * - 403: Forbidden (not match creator)
+ * - 404: Match not found
+ * - 500: Internal server error
+ */
 export const updateMatch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -170,6 +490,64 @@ export const updateMatch = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /api/matches/:id/join
+ * 
+ * Allows an authenticated user to join an existing match as a participant.
+ * Includes validation for match availability, capacity, and duplicate participation.
+ * 
+ * Path Parameters:
+ * - id (string, required): Unique identifier of the match to join
+ * 
+ * Request Body: None required
+ * 
+ * Features:
+ * - Validates match exists and is open for joining
+ * - Checks if match has reached maximum participant capacity
+ * - Prevents duplicate participation (user can't join same match twice)
+ * - Automatically sets participant status to "confirmed"
+ * - Updates match status to "full" when capacity is reached
+ * 
+ * Business Logic:
+ * 1. Verify match exists and status is "open"
+ * 2. Check current participant count against max_participants
+ * 3. Ensure user hasn't already joined this match
+ * 4. Add user as confirmed participant
+ * 5. Update match status to "full" if at capacity after joining
+ * 
+ * Response Format:
+ * {
+ *   "match_id": "uuid",
+ *   "user_id": "uuid",
+ *   "status": "confirmed",
+ *   "joined_at": "ISO 8601 datetime",
+ *   "user": {
+ *     "id": "uuid",
+ *     "username": "string",
+ *     "full_name": "string",
+ *     "avatar_url": "string"
+ *   }
+ * }
+ * 
+ * Authentication: Required (JWT token)
+ * Rate Limiting: None
+ * 
+ * Use Cases:
+ * - Join available sports matches
+ * - Participate in local sports events
+ * - Connect with other players
+ * 
+ * Error Responses:
+ * - 400: Bad request (match full, already joined, etc.)
+ * - 401: Authentication required
+ * - 404: Match not found or not open
+ * - 500: Internal server error
+ * 
+ * Error Messages:
+ * - "Match not found or not open"
+ * - "Match is full"
+ * - "User already joined this match"
+ */
 export const joinMatch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -243,6 +621,54 @@ export const joinMatch = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /api/matches/:id/leave
+ * 
+ * Allows an authenticated user to leave a match they have joined.
+ * Automatically reopens match if it was full and someone leaves.
+ * 
+ * Path Parameters:
+ * - id (string, required): Unique identifier of the match to leave
+ * 
+ * Request Body: None required
+ * 
+ * Features:
+ * - Removes user from match participants
+ * - Automatically changes match status from "full" to "open" if applicable
+ * - Validates user is actually a participant before removal
+ * 
+ * Business Logic:
+ * 1. Verify user is authenticated
+ * 2. Remove user from match_participants table
+ * 3. If match status was "full", change it back to "open" since there's now space
+ * 4. Return success confirmation
+ * 
+ * Response Format:
+ * {
+ *   "message": "Left match successfully"
+ * }
+ * 
+ * Authentication: Required (JWT token)
+ * Rate Limiting: None
+ * 
+ * Use Cases:
+ * - Cancel participation in a match
+ * - Free up space for other players
+ * - Change of plans or schedule conflicts
+ * 
+ * Notes:
+ * - Match creators cannot leave their own matches (they must delete/cancel instead)
+ * - Leaving a match makes it available for others to join
+ * - No validation if user was actually in the match (silent success)
+ * 
+ * Error Responses:
+ * - 401: Authentication required
+ * - 500: Internal server error
+ * 
+ * Side Effects:
+ * - Match status changes from "full" to "open" if applicable
+ * - Other users can now join if match was previously full
+ */
 export const leaveMatch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -272,6 +698,153 @@ export const leaveMatch = async (req: Request, res: Response) => {
       .eq('status', 'full');
 
     res.json({ message: 'Left match successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/matches/user
+ * 
+ * Retrieves all matches associated with the authenticated user, separated into
+ * matches they created and matches they joined as participants.
+ * 
+ * Path Parameters: None
+ * Query Parameters: None
+ * Request Body: None
+ * 
+ * Features:
+ * - Returns user's created matches and participated matches separately
+ * - Excludes matches user created from the "participated" list to avoid duplicates
+ * - Includes complete match details with related data (sport, creator, participants)
+ * - Results sorted by scheduled_at in descending order (newest first)
+ * - Two-phase query approach for accurate participant filtering
+ * 
+ * Response Format:
+ * {
+ *   "created": [
+ *     {
+ *       "id": "uuid",
+ *       "title": "string",
+ *       "description": "string",
+ *       "location": "POINT(lng lat)",
+ *       "location_name": "string",
+ *       "scheduled_at": "ISO 8601 datetime",
+ *       "duration": number,
+ *       "max_participants": number,
+ *       "skill_level_required": "string",
+ *       "status": "string",
+ *       "created_at": "ISO 8601 datetime",
+ *       "created_by": "uuid",
+ *       "sport": { "id": "uuid", "name": "string", ... },
+ *       "creator": { "id": "uuid", "username": "string", ... },
+ *       "participants": [
+ *         {
+ *           "user_id": "uuid",
+ *           "status": "confirmed",
+ *           "user": { "id": "uuid", "username": "string", ... }
+ *         }
+ *       ]
+ *     }
+ *   ],
+ *   "participated": [
+ *     // Same format as created, but matches where user is participant (not creator)
+ *   ]
+ * }
+ * 
+ * Business Logic:
+ * 1. Get all matches where user is the creator (created_by = user_id)
+ * 2. Get all match IDs where user is a participant
+ * 3. Get match details for participated matches, excluding user's own created matches
+ * 4. Return both arrays separately
+ * 
+ * Authentication: Required (JWT token)
+ * Rate Limiting: None
+ * 
+ * Use Cases:
+ * - Mobile app "My Created" tab
+ * - Mobile app "My Joined" tab
+ * - User profile match history
+ * - Match management dashboard
+ * 
+ * Data Separation:
+ * - "created": Matches where user is the creator/organizer
+ * - "participated": Matches where user joined as participant (excluding own matches)
+ * 
+ * Error Responses:
+ * - 401: Authentication required
+ * - 400: Bad request (database query errors)
+ * - 500: Internal server error
+ */
+export const getUserMatches = async (req: Request, res: Response) => {
+  try {
+    const user_id = req.user?.id;
+
+    if (!user_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Get all matches where user is creator or participant
+    const { data: createdMatches, error: createdError } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        sport:sports (*),
+        creator:profiles!created_by (*),
+        participants:match_participants (
+          *,
+          user:profiles (*)
+        )
+      `)
+      .eq('created_by', user_id)
+      .order('scheduled_at', { ascending: false });
+
+    // Get match IDs where user is a participant
+    const { data: participantData, error: participantError } = await supabase
+      .from('match_participants')
+      .select('match_id')
+      .eq('user_id', user_id);
+
+    if (participantError) {
+      return res.status(400).json({ error: participantError.message });
+    }
+
+    const participantMatchIds = participantData?.map(p => p.match_id) || [];
+
+    // Get the matches where user is a participant (but not creator)
+    let participatedMatches = [];
+    let participatedError = null;
+
+    if (participantMatchIds.length > 0) {
+      const { data, error } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          sport:sports (*),
+          creator:profiles!created_by (*),
+          participants:match_participants (
+            *,
+            user:profiles (*)
+          )
+        `)
+        .in('id', participantMatchIds)
+        .neq('created_by', user_id) // Exclude matches user created (already in createdMatches)
+        .order('scheduled_at', { ascending: false });
+
+      participatedMatches = data || [];
+      participatedError = error;
+    }
+
+    if (createdError || participatedError) {
+      return res.status(400).json({ 
+        error: createdError?.message || participatedError?.message 
+      });
+    }
+
+    res.json({
+      created: createdMatches || [],
+      participated: participatedMatches || []
+    });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

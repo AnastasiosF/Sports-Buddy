@@ -8,13 +8,14 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { Button, Avatar, ListItem, Card } from 'react-native-elements';
+import { Button, Avatar, ListItem, Card } from '@rneui/themed';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Profile } from '@sports-buddy/shared-types';
 import { profileService } from '../services/profileService';
-import { FriendRequestNotification } from '../components';
+import { FriendRequestNotification, ThemeSwitch } from '../components';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -22,6 +23,7 @@ export const ProfileScreen: React.FC = () => {
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const colors = useThemeColors();
 
   useEffect(() => {
     // In a real app, you'd fetch the full profile data here
@@ -88,7 +90,7 @@ export const ProfileScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FriendRequestNotification />
       <ScrollView 
         style={styles.scrollContainer}
@@ -96,14 +98,14 @@ export const ProfileScreen: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#2196F3']} // Android
-            tintColor="#2196F3" // iOS
+            colors={[colors.primary]} // Android
+            tintColor={colors.primary} // iOS
           />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.headerTitle, { color: 'white' }]}>Profile</Text>
         </View>
 
         {/* Profile Card */}
@@ -230,6 +232,8 @@ export const ProfileScreen: React.FC = () => {
         {/* App Settings */}
         <Card containerStyle={styles.settingsCard}>
           <Text style={styles.sectionTitle}>App Settings</Text>
+
+          <ThemeSwitch />
 
           <TouchableOpacity style={styles.settingItem}>
             <Ionicons name="notifications-outline" size={20} color="#666" />

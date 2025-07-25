@@ -7,10 +7,11 @@ import {
   Alert,
   Animated,
 } from 'react-native';
-import { Avatar, Button } from 'react-native-elements';
+import { Avatar, Button } from '@rneui/themed';
 import { Ionicons } from '@expo/vector-icons';
 import { useFriends } from '../contexts/FriendsContext';
 import { getInitials } from '@sports-buddy/shared-types';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface PendingRequest {
   id: string;
@@ -29,6 +30,7 @@ export const FriendRequestNotification: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-100));
   const [loading, setLoading] = useState(false);
+  const colors = useThemeColors();
 
   useEffect(() => {
     if (pendingRequests.length > 0 && !isVisible) {

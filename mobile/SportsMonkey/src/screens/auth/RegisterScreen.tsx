@@ -16,11 +16,12 @@ import {
   Card, 
   Icon,
   CheckBox 
-} from 'react-native-elements';
+} from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { isValidEmail, isValidPassword, isValidUsername } from '../../types';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 type RegisterScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -41,6 +42,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const { signUp } = useAuth();
+  const colors = useThemeColors();
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -135,7 +137,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: colors.surface }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -145,11 +147,11 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         >
           <View style={styles.header}>
             <Text style={styles.logo}>🏃‍♂️⚽</Text>
-            <Text h2 style={styles.title}>Join Sports Buddy</Text>
-            <Text style={styles.subtitle}>Create your account to start finding sports partners</Text>
+            <Text h2 style={[styles.title, { color: colors.primary }]}>Join Sports Buddy</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Create your account to start finding sports partners</Text>
           </View>
 
-          <Card containerStyle={styles.card}>            
+          <Card containerStyle={[styles.card, { backgroundColor: colors.card }]}>            
             <Input
               placeholder="Email Address *"
               value={formData.email}
@@ -425,7 +427,6 @@ const styles = StyleSheet.create({
   strengthFill: {
     height: '100%',
     borderRadius: 2,
-    transition: 'width 0.3s ease',
   },
   strengthText: {
     fontSize: 12,

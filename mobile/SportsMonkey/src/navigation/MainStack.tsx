@@ -4,6 +4,7 @@ import { LocationProvider } from '../contexts/LocationContext';
 import { TabNavigator } from './TabNavigator';
 import { ProfileSetupScreen } from '../screens/profile/ProfileSetupScreen';
 import { SportsSelectionScreen } from '../screens/profile/SportsSelectionScreen';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 export type MainStackParamList = {
   Tabs: undefined;
@@ -18,12 +19,16 @@ export type MainStackParamList = {
 const Stack = createStackNavigator<MainStackParamList>();
 
 export const MainStack: React.FC = () => {
+  // Navigation theme is now handled by NavigationContainer
+  // We can still use colors for specific customizations if needed
+  const colors = useThemeColors();
+  
   return (
     <LocationProvider>
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#2196F3',
+            backgroundColor: colors.primary,
           },
           headerTintColor: '#fff',
           headerTitleStyle: {

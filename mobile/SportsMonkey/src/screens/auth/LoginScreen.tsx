@@ -16,11 +16,12 @@ import {
   Card, 
   Icon,
   CheckBox 
-} from 'react-native-elements';
+} from '@rneui/themed';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { isValidEmail } from '../../types';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -35,6 +36,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const { signIn } = useAuth();
+  const colors = useThemeColors();
 
   const handleLogin = async () => {
     // Dismiss keyboard
@@ -80,7 +82,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: colors.surface }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -90,13 +92,13 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         >
           <View style={styles.header}>
             <Text style={styles.logo}>🏃‍♂️⚽</Text>
-            <Text h1 style={styles.title}>Sports Buddy</Text>
-            <Text style={styles.subtitle}>Find your perfect sports partner</Text>
+            <Text h1 style={[styles.title, { color: colors.primary }]}>Sports Buddy</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Find your perfect sports partner</Text>
           </View>
 
-          <Card containerStyle={styles.card}>
-            <Text h4 style={styles.cardTitle}>Welcome Back!</Text>
-            <Text style={styles.cardSubtitle}>Sign in to continue your sports journey</Text>
+          <Card containerStyle={[styles.card, { backgroundColor: colors.card }]}>
+            <Text h4 style={[styles.cardTitle, { color: colors.text }]}>Welcome Back!</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>Sign in to continue your sports journey</Text>
             
             <Input
               placeholder="Email Address"
@@ -111,11 +113,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   name="email"
                   type="material"
                   size={20}
-                  color="#666"
+                  color={colors.textSecondary}
                 />
               }
-              inputContainerStyle={styles.inputContainer}
-              inputStyle={styles.input}
+              inputContainerStyle={[styles.inputContainer, { borderBottomColor: colors.border }]}
+              inputStyle={[styles.input, { color: colors.text }]}
               errorMessage={email && !isValidEmail(email) ? 'Please enter a valid email' : ''}
             />
             
@@ -130,7 +132,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   name="lock"
                   type="material"
                   size={20}
-                  color="#666"
+                  color={colors.textSecondary}
                 />
               }
               rightIcon={
@@ -138,12 +140,12 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   name={showPassword ? "visibility" : "visibility-off"}
                   type="material"
                   size={20}
-                  color="#666"
+                  color={colors.textSecondary}
                   onPress={() => setShowPassword(!showPassword)}
                 />
               }
-              inputContainerStyle={styles.inputContainer}
-              inputStyle={styles.input}
+              inputContainerStyle={[styles.inputContainer, { borderBottomColor: colors.border }]}
+              inputStyle={[styles.input, { color: colors.text }]}
             />
 
             <View style={styles.optionsRow}>
@@ -152,15 +154,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 checked={rememberMe}
                 onPress={() => setRememberMe(!rememberMe)}
                 containerStyle={styles.checkboxContainer}
-                textStyle={styles.checkboxText}
-                checkedColor="#2196F3"
+                textStyle={[styles.checkboxText, { color: colors.textSecondary }]}
+                checkedColor={colors.primary}
               />
               
               <Button
                 title="Forgot Password?"
                 type="clear"
                 onPress={handleForgotPassword}
-                titleStyle={styles.forgotPasswordText}
+                titleStyle={[styles.forgotPasswordText, { color: colors.primary }]}
                 buttonStyle={styles.forgotPasswordButton}
               />
             </View>
@@ -170,7 +172,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               onPress={handleLogin}
               loading={loading}
               disabled={loading}
-              buttonStyle={styles.signInButton}
+              buttonStyle={[styles.signInButton, { backgroundColor: colors.primary }]}
               titleStyle={styles.signInButtonText}
               icon={
                 <Icon
@@ -184,21 +186,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             />
 
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
             <Button
               title="Continue with Google"
-              buttonStyle={styles.socialButton}
+              buttonStyle={[styles.socialButton, { backgroundColor: colors.primary }]}
               titleStyle={styles.socialButtonText}
               icon={
                 <Icon
                   name="google"
                   type="font-awesome"
                   size={16}
-                  color="#4285F4"
+                  color="white"
                   style={{ marginRight: 8 }}
                 />
               }
@@ -208,19 +210,19 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             />
 
             <View style={styles.signUpPrompt}>
-              <Text style={styles.signUpText}>Don't have an account? </Text>
+              <Text style={[styles.signUpText, { color: colors.textSecondary }]}>Don't have an account? </Text>
               <Button
                 title="Sign Up"
                 type="clear"
                 onPress={() => navigation.navigate('Register')}
-                titleStyle={styles.signUpButtonText}
+                titleStyle={[styles.signUpButtonText, { color: colors.primary }]}
                 buttonStyle={styles.signUpButton}
               />
             </View>
           </Card>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
+            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
               By signing in, you agree to our Terms of Service and Privacy Policy
             </Text>
           </View>
@@ -233,7 +235,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -250,12 +251,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   title: {
-    color: '#2196F3',
     fontWeight: 'bold',
     marginBottom: 5,
   },
   subtitle: {
-    color: '#666',
     fontSize: 16,
     textAlign: 'center',
   },
@@ -270,18 +269,15 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     textAlign: 'center',
-    color: '#333',
     marginBottom: 5,
   },
   cardSubtitle: {
     textAlign: 'center',
-    color: '#666',
     marginBottom: 25,
     fontSize: 14,
   },
   inputContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
     paddingHorizontal: 0,
   },
   input: {
@@ -302,18 +298,15 @@ const styles = StyleSheet.create({
   },
   checkboxText: {
     fontSize: 14,
-    color: '#666',
     fontWeight: 'normal',
   },
   forgotPasswordButton: {
     padding: 0,
   },
   forgotPasswordText: {
-    color: '#2196F3',
     fontSize: 14,
   },
   signInButton: {
-    backgroundColor: '#2196F3',
     borderRadius: 25,
     paddingVertical: 12,
     marginTop: 20,
@@ -330,15 +323,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e0e0e0',
   },
   dividerText: {
-    color: '#999',
     paddingHorizontal: 15,
     fontSize: 12,
   },
   socialButton: {
-    backgroundColor: '#4285f4',
     borderRadius: 25,
     paddingVertical: 12,
   },
@@ -353,14 +343,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   signUpText: {
-    color: '#666',
     fontSize: 16,
   },
   signUpButton: {
     padding: 0,
   },
   signUpButtonText: {
-    color: '#2196F3',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -370,7 +358,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     textAlign: 'center',
-    color: '#999',
     fontSize: 12,
     lineHeight: 18,
   },

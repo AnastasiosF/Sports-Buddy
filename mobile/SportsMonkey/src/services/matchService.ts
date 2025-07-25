@@ -32,7 +32,8 @@ export const matchService = {
       if (value) queryParams.append(key, value.toString());
     });
 
-    return api.get<Match[]>(`/api/matches?${queryParams.toString()}`);
+    const response = await api.get<{ matches: Match[] }>(`/api/matches?${queryParams.toString()}`);
+    return response.matches;
   },
 
   // Get specific match
@@ -58,5 +59,10 @@ export const matchService = {
   // Leave a match
   leaveMatch: async (matchId: string): Promise<void> => {
     return api.post<void>(`/api/matches/${matchId}/leave`);
+  },
+
+  // Get user's matches (created and participated)
+  getUserMatches: async (): Promise<{ created: Match[], participated: Match[] }> => {
+    return api.get<{ created: Match[], participated: Match[] }>('/api/matches/user');
   },
 };

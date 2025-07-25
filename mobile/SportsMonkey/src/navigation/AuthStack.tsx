@@ -2,6 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -11,19 +12,23 @@ export type AuthStackParamList = {
 const Stack = createStackNavigator<AuthStackParamList>();
 
 export const AuthStack: React.FC = () => {
+  // Navigation theme is now handled by NavigationContainer
+  // We can still use colors for specific customizations if needed
+  const colors = useThemeColors();
+  
   return (
     <Stack.Navigator
       initialRouteName="Login"
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#2196F3',
+          backgroundColor: colors.primary,
         },
         headerTintColor: '#fff',
         headerTitleStyle: {
           fontWeight: 'bold',
         },
         cardStyle: {
-          backgroundColor: '#f5f5f5',
+          backgroundColor: colors.background,
         },
       }}
     >

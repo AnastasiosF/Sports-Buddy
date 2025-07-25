@@ -8,7 +8,7 @@ import {
   Header,
   ButtonGroup,
   Divider
-} from 'react-native-elements';
+} from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { profileService } from '../../services/profileService';
 import { locationService } from '../../services/locationService';

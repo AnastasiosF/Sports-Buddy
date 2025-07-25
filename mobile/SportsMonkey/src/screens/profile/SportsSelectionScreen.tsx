@@ -8,7 +8,7 @@ import {
   ButtonGroup,
   Header,
   Badge
-} from 'react-native-elements';
+} from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { sportsService } from '../../services/sportsService';
 import { profileService } from '../../services/profileService';

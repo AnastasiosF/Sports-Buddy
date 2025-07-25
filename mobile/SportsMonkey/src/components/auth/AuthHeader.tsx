@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text } from 'react-native-elements';
+import { Text } from '@rneui/themed';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface AuthHeaderProps {
   title: string;
@@ -13,11 +14,13 @@ export const AuthHeader: React.FC<AuthHeaderProps> = ({
   subtitle,
   showLogo = true,
 }) => {
+  const colors = useThemeColors();
+  
   return (
     <View style={styles.container}>
       {showLogo && <Text style={styles.logo}>🏃‍♂️⚽</Text>}
-      <Text h2 style={styles.title}>{title}</Text>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      <Text h2 style={[styles.title, { color: colors.primary }]}>{title}</Text>
+      {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
     </View>
   );
 };
@@ -33,13 +36,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   title: {
-    color: '#2196F3',
     fontWeight: 'bold',
     marginBottom: 5,
     textAlign: 'center',
   },
   subtitle: {
-    color: '#666',
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,

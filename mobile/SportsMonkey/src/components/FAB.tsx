@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 interface FABAction {
   icon: keyof typeof Ionicons.glyphMap;
@@ -27,6 +28,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [animation] = useState(new Animated.Value(0));
+  const colors = useThemeColors();
 
   const defaultActions: FABAction[] = [
     {
@@ -115,7 +117,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                { backgroundColor: action.color || '#2196F3' },
+                { backgroundColor: action.color || colors.primary },
               ]}
               onPress={action.onPress}
               activeOpacity={0.8}
@@ -132,7 +134,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
 
       {/* Main FAB Button */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={toggleMenu}
         activeOpacity={0.8}
       >
@@ -167,7 +169,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,

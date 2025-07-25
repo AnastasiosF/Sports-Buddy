@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -19,7 +19,7 @@ import {
   ButtonGroup,
   Slider,
   Icon
-} from 'react-native-elements';
+} from '@rneui/themed';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocation } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -84,6 +84,10 @@ export const NearbyPeopleScreen: React.FC = () => {
   const sportOptions = ['All Sports', ...sports.map(sport => sport.name)];
   const skillLevels = ['Any Level', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
   const tabs = ['Nearby', 'Friends', 'Search'];
+
+  // Memoize icon objects to prevent SearchBar re-renders
+  const searchIcon = useMemo(() => ({ name: 'search', size: 20, color: '#666' }), []);
+  const clearIcon = useMemo(() => ({ name: 'clear', size: 20, color: '#666' }), []);
 
   useEffect(() => {
     loadSports();
@@ -480,14 +484,14 @@ export const NearbyPeopleScreen: React.FC = () => {
         <SearchBar
           placeholder="Search by username... (Press enter to search)"
           value={searchText}
-          onChangeText={setSearchText}
+          onChangeText={(text: string) => setSearchText(text)}
           onSubmitEditing={handleSearchSubmit}
           returnKeyType="search"
           containerStyle={styles.searchContainer}
           inputContainerStyle={styles.searchInput}
           inputStyle={styles.searchInputText}
-          searchIcon={{ name: 'search', size: 20, color: '#666' }}
-          clearIcon={{ name: 'clear', size: 20, color: '#666' }}
+          searchIcon={searchIcon}
+          clearIcon={clearIcon}
           showLoading={isSearching}
         />
       ) : activeTab === 0 && (
@@ -495,13 +499,13 @@ export const NearbyPeopleScreen: React.FC = () => {
           <SearchBar
             placeholder="Search by name or location..."
             value={nearbySearchText}
-            onChangeText={setNearbySearchText}
+            onChangeText={(text: string) => setNearbySearchText(text)}
             returnKeyType="search"
             containerStyle={styles.searchContainer}
             inputContainerStyle={styles.searchInput}
             inputStyle={styles.searchInputText}
-            searchIcon={{ name: 'search', size: 20, color: '#666' }}
-            clearIcon={{ name: 'clear', size: 20, color: '#666' }}
+            searchIcon={searchIcon}
+            clearIcon={clearIcon}
             showLoading={loading}
           />
 

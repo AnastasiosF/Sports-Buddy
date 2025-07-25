@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { Button, Icon } from 'react-native-elements';
+import { Button, Icon } from '@rneui/themed';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface SocialButtonProps {
   provider: 'google' | 'facebook' | 'apple';
@@ -15,6 +16,7 @@ export const SocialButton: React.FC<SocialButtonProps> = ({
   loading = false,
   disabled = false,
 }) => {
+  const colors = useThemeColors();
   const getProviderConfig = () => {
     switch (provider) {
       case 'google':
@@ -43,7 +45,7 @@ export const SocialButton: React.FC<SocialButtonProps> = ({
           title: 'Continue',
           iconName: 'account',
           iconType: 'material',
-          iconColor: '#666',
+          iconColor: colors.textSecondary,
         };
     }
   };
@@ -53,7 +55,7 @@ export const SocialButton: React.FC<SocialButtonProps> = ({
   return (
     <Button
       title={config.title}
-      buttonStyle={styles.socialButton}
+      buttonStyle={[styles.socialButton, { backgroundColor: colors.primary }]}
       titleStyle={styles.socialButtonText}
       loading={loading}
       disabled={disabled}
@@ -75,7 +77,6 @@ export const SocialButton: React.FC<SocialButtonProps> = ({
 
 const styles = StyleSheet.create({
   socialButton: {
-    backgroundColor: '#4285f4',
     borderRadius: 25,
     paddingVertical: 12,
   },
