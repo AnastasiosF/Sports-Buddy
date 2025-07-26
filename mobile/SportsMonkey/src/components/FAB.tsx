@@ -35,10 +35,19 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
       icon: 'basketball-outline',
       label: 'Create Match',
       onPress: () => {
-        console.log('Create match');
+        navigation.navigate('CreateMatch' as never);
         toggleMenu();
       },
       color: '#4CAF50',
+    },
+    {
+      icon: 'search-outline',
+      label: 'Search Matches',
+      onPress: () => {
+        navigation.navigate('MatchSearch' as never);
+        toggleMenu();
+      },
+      color: '#2196F3',
     },
     {
       icon: 'person-add-outline',

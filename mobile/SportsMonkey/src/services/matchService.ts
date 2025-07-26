@@ -5,7 +5,7 @@ export interface CreateMatchRequest {
   sport_id: string;
   title: string;
   description?: string;
-  location: Location;
+  location: [number, number]; // [longitude, latitude]
   location_name: string;
   scheduled_at: string;
   duration?: number;
@@ -21,6 +21,8 @@ export interface GetMatchesParams {
   status?: string;
   date_from?: string;
   date_to?: string;
+  search?: string; // Search query
+  search_type?: string; // Search type: 'all', 'location', 'title', 'creator'
 }
 
 export const matchService = {
@@ -64,5 +66,22 @@ export const matchService = {
   // Get user's matches (created and participated)
   getUserMatches: async (): Promise<{ created: Match[], participated: Match[] }> => {
     return api.get<{ created: Match[], participated: Match[] }>('/api/matches/user');
+  },
+
+  // Invite user to match
+  inviteToMatch: async (matchId: string, userId: string): Promise<void> => {
+    return api.post<void>(`/api/matches/${matchId}/invite`, { user_id: userId });
+  },
+
+  // Respond to match invitation
+  respondToInvitation: async (matchId: string, response: 'accept' | 'decline'): Promise<void> => {
+    return api.post<void>(`/api/matches/${matchId}/respond`, { response });
+  },
+
+  // Get pending match invitations for current user
+  getPendingInvitations: async (): Promise<any[]> => {
+    // This would need a new backend endpoint to get pending invitations
+    // For now, we'll return empty array as placeholder
+    return [];
   },
 };

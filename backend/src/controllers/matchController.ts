@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { supabase } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase';
 
 /**
  * GET /api/matches
@@ -59,7 +59,7 @@ import { supabase } from '../config/supabase';
  */
 export const getMatches = async (req: Request, res: Response) => {
   try {
-    const { location, radius = 10000, sport_id, skill_level, status = 'open' } = req.query;
+    const { location, radius = 10000, sport_id, skill_level, status = 'open', search, search_type } = req.query;
 
     // Base query
     let query = supabase
@@ -86,6 +86,27 @@ export const getMatches = async (req: Request, res: Response) => {
       query = query.eq('skill_level_required', skill_level);
     }
 
+    // Add text search if provided
+    if (search && typeof search === 'string' && search.length > 2) {
+      const searchTerm = search.toLowerCase();
+      
+      switch (search_type) {
+        case 'location':
+          query = query.ilike('location_name', `%${searchTerm}%`);
+          break;
+        case 'title':
+          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+          break;
+        case 'creator':
+          // For creator search, we'll need to filter after the query since we need to search in profiles
+          break;
+        default:
+          // Search all fields
+          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,location_name.ilike.%${searchTerm}%`);
+          break;
+      }
+    }
+
     const { data, error } = await query
       .order('scheduled_at')
       .limit(100); // Get more matches for filtering
@@ -95,6 +116,15 @@ export const getMatches = async (req: Request, res: Response) => {
     }
 
     let matches = data || [];
+    
+    // Apply creator search if needed (after initial query since we need profile data)
+    if (search && search_type === 'creator' && typeof search === 'string' && search.length > 2) {
+      const searchTerm = search.toLowerCase();
+      matches = matches.filter(match => 
+        match.creator?.username?.toLowerCase().includes(searchTerm) ||
+        match.creator?.full_name?.toLowerCase().includes(searchTerm)
+      );
+    }
     
     // If location was provided, calculate distances and filter by radius
     if (location && typeof location === 'string') {
@@ -337,7 +367,9 @@ export const createMatch = async (req: Request, res: Response) => {
     // Convert location array to PostGIS POINT format
     const locationPoint = `POINT(${location[0]} ${location[1]})`;
 
-    const { data, error } = await supabase
+    // Use authenticated client for proper RLS context
+    const authClient = req.supabaseAuth || supabase;
+    const { data, error } = await authClient
       .from('matches')
       .insert([{
         created_by,
@@ -846,6 +878,269 @@ export const getUserMatches = async (req: Request, res: Response) => {
       participated: participatedMatches || []
     });
   } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * POST /api/matches/:id/invite
+ * 
+ * Invites a user to join a match by creating a pending participant entry.
+ * Only match creators can invite users to their matches.
+ * 
+ * Path Parameters:
+ * - id (string, required): Match ID to invite user to
+ * 
+ * Request Body:
+ * {
+ *   "user_id": "uuid" // Required: ID of user to invite
+ * }
+ * 
+ * Features:
+ * - Only match creator can send invites
+ * - Creates pending participant entry
+ * - Prevents duplicate invitations
+ * - Validates match capacity
+ * 
+ * Response Format:
+ * {
+ *   "match_id": "uuid",
+ *   "user_id": "uuid", 
+ *   "status": "pending",
+ *   "joined_at": "ISO 8601 datetime",
+ *   "user": {
+ *     "id": "uuid",
+ *     "username": "string",
+ *     "full_name": "string",
+ *     "avatar_url": "string"
+ *   }
+ * }
+ * 
+ * Authentication: Required (JWT token)
+ * Authorization: Only match creator can invite
+ * 
+ * Error Responses:
+ * - 400: Bad request (match full, user already invited, etc.)
+ * - 401: Authentication required
+ * - 403: Forbidden (not match creator)
+ * - 404: Match or user not found
+ * - 500: Internal server error
+ */
+export const inviteToMatch = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.body;
+    
+    const creator_id = req.user?.id;
+
+    if (!creator_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!user_id) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Verify user is the match creator
+    const { data: match, error: matchError } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('id', id)
+      .eq('created_by', creator_id)
+      .single();
+
+    if (matchError || !match) {
+      return res.status(404).json({ error: 'Match not found or you are not the creator' });
+    }
+
+    // Check if match is still open and has space
+    if (match.status !== 'open') {
+      return res.status(400).json({ error: 'Match is not open for invitations' });
+    }
+
+    // Check current participant count
+    const { data: participants, error: participantError } = await supabase
+      .from('match_participants')
+      .select('count')
+      .eq('match_id', id);
+
+    if (participantError) {
+      return res.status(400).json({ error: participantError.message });
+    }
+
+    const participantCount = participants?.length || 0;
+    if (participantCount >= match.max_participants) {
+      return res.status(400).json({ error: 'Match is full' });
+    }
+
+    // Check if user is already invited or joined
+    const { data: existingParticipant } = await supabase
+      .from('match_participants')
+      .select('*')
+      .eq('match_id', id)
+      .eq('user_id', user_id)
+      .single();
+
+    if (existingParticipant) {
+      return res.status(400).json({ error: 'User already invited or joined this match' });
+    }
+
+    // Create invitation (pending participant)
+    // Use admin client to bypass RLS since creator is inviting another user
+    const { data, error } = await supabaseAdmin
+      .from('match_participants')
+      .insert([{
+        match_id: id,
+        user_id,
+        status: 'pending',
+      }])
+      .select(`
+        *,
+        user:profiles (*)
+      `)
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.status(201).json(data);
+  } catch (error) {
+    console.error('Error inviting to match:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * POST /api/matches/:id/respond
+ * 
+ * Responds to a match invitation (accept or decline).
+ * Only invited users can respond to their pending invitations.
+ * 
+ * Path Parameters:
+ * - id (string, required): Match ID to respond to
+ * 
+ * Request Body:
+ * {
+ *   "response": "accept" | "decline" // Required: Response to invitation
+ * }
+ * 
+ * Features:
+ * - Updates participant status from pending to confirmed/declined
+ * - Only user who was invited can respond
+ * - Validates match capacity when accepting
+ * - Updates match status if full after acceptance
+ * 
+ * Response Format:
+ * {
+ *   "match_id": "uuid",
+ *   "user_id": "uuid",
+ *   "status": "confirmed" | "declined",
+ *   "joined_at": "ISO 8601 datetime"
+ * }
+ * 
+ * Authentication: Required (JWT token)
+ * Authorization: Only invited user can respond
+ * 
+ * Error Responses:
+ * - 400: Bad request (invalid response, match full, etc.)
+ * - 401: Authentication required
+ * - 404: Invitation not found
+ * - 500: Internal server error
+ */
+export const respondToInvitation = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { response } = req.body;
+    
+    const user_id = req.user?.id;
+
+    if (!user_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!response || !['accept', 'decline'].includes(response)) {
+      return res.status(400).json({ error: 'Valid response (accept/decline) is required' });
+    }
+
+    // Find the pending invitation
+    const { data: invitation, error: invitationError } = await supabase
+      .from('match_participants')
+      .select('*')
+      .eq('match_id', id)
+      .eq('user_id', user_id)
+      .eq('status', 'pending')
+      .single();
+
+    if (invitationError || !invitation) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    const newStatus = response === 'accept' ? 'confirmed' : 'declined';
+
+    // If accepting, check if match still has space
+    if (response === 'accept') {
+      const { data: match, error: matchError } = await supabase
+        .from('matches')
+        .select('*, participants:match_participants(count)')
+        .eq('id', id)
+        .single();
+
+      if (matchError) {
+        return res.status(400).json({ error: matchError.message });
+      }
+
+      const confirmedCount = await supabase
+        .from('match_participants')
+        .select('count')
+        .eq('match_id', id)
+        .eq('status', 'confirmed');
+
+      const currentConfirmed = confirmedCount.data?.length || 0;
+      if (currentConfirmed >= match.max_participants) {
+        return res.status(400).json({ error: 'Match is now full' });
+      }
+    }
+
+    // Update the invitation status
+    const { data, error } = await supabase
+      .from('match_participants')
+      .update({ status: newStatus })
+      .eq('match_id', id)
+      .eq('user_id', user_id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // If accepted, check if match is now full and update status
+    if (response === 'accept') {
+      const { data: match } = await supabase
+        .from('matches')
+        .select('max_participants')
+        .eq('id', id)
+        .single();
+
+      const { data: confirmedParticipants } = await supabase
+        .from('match_participants')
+        .select('count')
+        .eq('match_id', id)
+        .eq('status', 'confirmed');
+
+      const confirmedCount = confirmedParticipants?.length || 0;
+      if (confirmedCount >= match?.max_participants) {
+        await supabase
+          .from('matches')
+          .update({ status: 'full' })
+          .eq('id', id);
+      }
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error responding to invitation:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

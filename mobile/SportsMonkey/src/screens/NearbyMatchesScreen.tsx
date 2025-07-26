@@ -35,6 +35,11 @@ export const NearbyMatchesScreen: React.FC = () => {
   const [searchRadius, setSearchRadius] = useState(10000); // 10km default
   const [activeTab, setActiveTab] = useState(0);
 
+  const handleTabChange = (index: number) => {
+    setActiveTab(index);
+    setSearchText(''); // Clear search when switching tabs
+  };
+
   const sportOptions = ['All Sports', ...sports.map(sport => sport.name)];
   const skillLevels = ['Any Level', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
   const tabs = ['Nearby', 'My Created', 'My Joined'];
@@ -118,7 +123,25 @@ export const NearbyMatchesScreen: React.FC = () => {
     match.title.toLowerCase().includes(searchText.toLowerCase()) ||
     match.description?.toLowerCase().includes(searchText.toLowerCase()) ||
     match.location_name.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.sport?.name.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.creator?.username.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const filteredCreatedMatches = userMatches.created.filter(match =>
+    searchText === '' ||
+    match.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.description?.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.location_name.toLowerCase().includes(searchText.toLowerCase()) ||
     match.sport?.name.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const filteredParticipatedMatches = userMatches.participated.filter(match =>
+    searchText === '' ||
+    match.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.description?.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.location_name.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.sport?.name.toLowerCase().includes(searchText.toLowerCase()) ||
+    match.creator?.username.toLowerCase().includes(searchText.toLowerCase())
   );
 
   const getCurrentData = () => {
@@ -126,9 +149,9 @@ export const NearbyMatchesScreen: React.FC = () => {
       case 0:
         return filteredMatches;
       case 1:
-        return userMatches.created;
+        return filteredCreatedMatches;
       case 2:
-        return userMatches.participated;
+        return filteredParticipatedMatches;
       default:
         return [];
     }
@@ -146,6 +169,11 @@ export const NearbyMatchesScreen: React.FC = () => {
         default:
           return 'Loading...';
       }
+    }
+    
+    // Check if we're showing filtered results
+    if (searchText.trim() !== '') {
+      return `No matches found for "${searchText}"`;
     }
     
     switch (activeTab) {
@@ -276,26 +304,26 @@ export const NearbyMatchesScreen: React.FC = () => {
         <ButtonGroup
           buttons={tabs}
           selectedIndex={activeTab}
-          onPress={setActiveTab}
+          onPress={handleTabChange}
           containerStyle={styles.tabContainer}
           selectedButtonStyle={styles.selectedTab}
           textStyle={styles.tabText}
           selectedTextStyle={styles.selectedTabText}
         />
         
+        <SearchBar
+          placeholder={`Search ${tabs[activeTab].toLowerCase()} matches...`}
+          value={searchText}
+          onChangeText={(text: string) => setSearchText(text)}
+          returnKeyType="search"
+          containerStyle={styles.searchContainer}
+          inputContainerStyle={styles.searchInput}
+          searchIcon={searchIcon}
+          clearIcon={clearIcon}
+        />
+        
         {activeTab === 0 && (
           <>
-            <SearchBar
-              placeholder="Search matches..."
-              value={searchText}
-              onChangeText={(text: string) => setSearchText(text)}
-              returnKeyType="search"
-              containerStyle={styles.searchContainer}
-              inputContainerStyle={styles.searchInput}
-              searchIcon={searchIcon}
-              clearIcon={clearIcon}
-            />
-
             <Text style={styles.filterLabel}>Sport:</Text>
             <ButtonGroup
               buttons={sportOptions}

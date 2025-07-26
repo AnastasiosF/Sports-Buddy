@@ -28,7 +28,9 @@ import {
   updateMatch, 
   joinMatch, 
   leaveMatch,
-  getUserMatches
+  getUserMatches,
+  inviteToMatch,
+  respondToInvitation
 } from '../controllers/matchController';
 import { authenticateUser, verifyMatchCreator, optionalAuth } from '../middleware/auth';
 import { matchCreationRateLimit, searchRateLimit } from '../middleware/security';
@@ -67,5 +69,11 @@ router.post('/:id/join', authenticateUser, joinMatch);
 
 // POST /api/matches/:id/leave - Leave a match
 router.post('/:id/leave', authenticateUser, leaveMatch);
+
+// POST /api/matches/:id/invite - Invite user to match (creator only)
+router.post('/:id/invite', authenticateUser, verifyMatchCreator, inviteToMatch);
+
+// POST /api/matches/:id/respond - Respond to match invitation
+router.post('/:id/respond', authenticateUser, respondToInvitation);
 
 export default router;

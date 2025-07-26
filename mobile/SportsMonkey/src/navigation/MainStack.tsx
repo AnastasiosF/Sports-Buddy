@@ -4,6 +4,9 @@ import { LocationProvider } from '../contexts/LocationContext';
 import { TabNavigator } from './TabNavigator';
 import { ProfileSetupScreen } from '../screens/profile/ProfileSetupScreen';
 import { SportsSelectionScreen } from '../screens/profile/SportsSelectionScreen';
+import { CreateMatchScreen } from '../screens/CreateMatchScreen';
+import { UserSearchScreen } from '../screens/UserSearchScreen';
+import { MatchSearchScreen } from '../screens/MatchSearchScreen';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 export type MainStackParamList = {
@@ -14,6 +17,9 @@ export type MainStackParamList = {
   Settings: undefined;
   ProfileSetup: undefined;
   SportsSelection: undefined;
+  CreateMatch: undefined;
+  UserSearch: { matchId?: string; sport_id?: string };
+  MatchSearch: undefined;
 };
 
 const Stack = createStackNavigator<MainStackParamList>();
@@ -53,6 +59,27 @@ export const MainStack: React.FC = () => {
         <Stack.Screen
           name="SportsSelection"
           component={SportsSelectionScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="CreateMatch"
+          component={CreateMatchScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="UserSearch"
+          component={UserSearchScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="MatchSearch"
+          component={MatchSearchScreen}
           options={{
             headerShown: false,
           }}
