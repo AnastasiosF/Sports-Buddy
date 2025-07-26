@@ -8,7 +8,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import type { MainStackParamList } from '../navigation/MainStack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../hooks/useThemeColors';
 
@@ -24,7 +25,7 @@ interface FABProps {
 }
 
 export const FAB: React.FC<FABProps> = ({ actions }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<MainStackParamList>>();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [animation] = useState(new Animated.Value(0));
@@ -32,10 +33,19 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
 
   const defaultActions: FABAction[] = [
     {
+      icon: 'person-outline',
+      label: 'Profile',
+      onPress: () => {
+        navigation.navigate('Profile', {});
+        toggleMenu();
+      },
+      color: '#9C27B0',
+    },
+    {
       icon: 'basketball-outline',
       label: 'Create Match',
       onPress: () => {
-        navigation.navigate('CreateMatch' as never);
+        navigation.navigate('CreateMatch');
         toggleMenu();
       },
       color: '#4CAF50',
@@ -44,28 +54,10 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
       icon: 'search-outline',
       label: 'Search Matches',
       onPress: () => {
-        navigation.navigate('MatchSearch' as never);
+        navigation.navigate('MatchSearch');
         toggleMenu();
       },
       color: '#2196F3',
-    },
-    {
-      icon: 'person-add-outline',
-      label: 'Profile Setup',
-      onPress: () => {
-        navigation.navigate('ProfileSetup' as never);
-        toggleMenu();
-      },
-      color: '#FF9800',
-    },
-    {
-      icon: 'settings-outline',
-      label: 'Settings',
-      onPress: () => {
-        console.log('Settings');
-        toggleMenu();
-      },
-      color: '#9C27B0',
     },
   ];
 

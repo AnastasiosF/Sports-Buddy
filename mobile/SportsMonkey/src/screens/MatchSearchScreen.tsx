@@ -167,10 +167,10 @@ export const MatchSearchScreen: React.FC = () => {
               <Ionicons name="location-outline" size={14} color="#666" />
               {' '}{match.location_name}
             </Text>
-            {match.distance && (
+            {(match as any).distance && (
               <Text style={styles.matchDistance}>
                 <Ionicons name="walk-outline" size={14} color="#666" />
-                {' '}{(match.distance / 1000).toFixed(1)}km away
+                {' '}{((match as any).distance / 1000).toFixed(1)}km away
               </Text>
             )}
           </View>

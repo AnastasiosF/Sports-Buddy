@@ -79,13 +79,18 @@ export const NearbyMatchesScreen: React.FC = () => {
     try {
       const params = {
         location: `${location.latitude},${location.longitude}`,
-        radius: searchRadius.toString(),
+        radius: searchRadius,
         sport_id: selectedSportIndex > 0 ? sports[selectedSportIndex - 1]?.id : undefined,
         skill_level: skillLevelIndex > 0 ? skillLevels[skillLevelIndex].toLowerCase() : undefined,
       };
 
       const matchesData = await matchService.getMatches(params);
-      setMatches(matchesData);
+      // Add distance property to matches
+      const matchesWithDistance = matchesData.map(match => ({
+        ...match,
+        distance: 0, // Distance would be calculated by backend
+      }));
+      setMatches(matchesWithDistance);
     } catch (error) {
       console.error('Failed to search nearby matches:', error);
       Alert.alert('Search Failed', 'Unable to find nearby matches. Please try again.');
@@ -358,14 +363,14 @@ export const NearbyMatchesScreen: React.FC = () => {
               step={1000}
               thumbStyle={styles.sliderThumb}
               trackStyle={styles.sliderTrack}
-              containerStyle={styles.slider}
+        style={styles.slider}
             />
           </>
         )}
       </View>
 
       <FlatList
-        data={getCurrentData()}
+        data={getCurrentData() as NearbyMatch[]}
         renderItem={renderMatchItem}
         keyExtractor={(item) => item.id}
         refreshControl={

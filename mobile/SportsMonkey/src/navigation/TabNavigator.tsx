@@ -2,18 +2,21 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View } from 'react-native';
 import { Button } from '@rneui/themed';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import type { MainStackParamList } from './MainStack';
 import { useAuth } from '../contexts/AuthContext';
 import { NearbyPeopleScreen } from '../screens/NearbyPeopleScreen';
 import { NearbyMatchesScreen } from '../screens/NearbyMatchesScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { MainDashboard } from '../screens/MainDashboardScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { FAB } from '../components/FAB';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 export type TabParamList = {
-  People: undefined;
+  Home: undefined;
+  Friends: undefined;
   Matches: undefined;
   Profile: undefined;
 };
@@ -21,9 +24,13 @@ export type TabParamList = {
 const Tab = createBottomTabNavigator<TabParamList>();
 
 // Header component for consistent header across tabs
-const TabHeader: React.FC = () => {
-  const navigation = useNavigation();
-  const { user, signOut } = useAuth();
+interface TabHeaderProps {
+  title?: string;
+}
+
+const TabHeader: React.FC<TabHeaderProps> = ({ title }) => {
+  const navigation = useNavigation<NavigationProp<MainStackParamList>>();
+  const { user } = useAuth();
   const colors = useThemeColors();
 
   return (
@@ -41,24 +48,36 @@ const TabHeader: React.FC = () => {
       justifyContent: 'space-between',
       alignItems: 'center',
     }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+        <View style={{
+          width: 32,
+          height: 32,
+          backgroundColor: 'white',
+          borderRadius: 16,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12,
+        }}>
+          <Ionicons name="basketball" size={20} color={colors.primary} />
+        </View>
+        {title && (
+          <Button
+            title={title}
+            type="clear"
+            titleStyle={{
+              color: 'white',
+              fontSize: 18,
+              fontWeight: 'bold',
+            }}
+            buttonStyle={{
+              justifyContent: 'flex-start',
+              paddingLeft: 0,
+            }}
+            disabled
+          />
+        )}
+      </View>
       <Button
-        title="Sports Monkey"
-        type="clear"
-        titleStyle={{
-          color: 'white',
-          fontSize: 18,
-          fontWeight: 'bold',
-        }}
-        buttonStyle={{
-          justifyContent: 'flex-start',
-          paddingLeft: 0,
-        }}
-        onPress={() => {
-          console.log('Navigate to profile');
-        }}
-      />
-      <Button
-        title="Sign Out"
         type="clear"
         titleStyle={{
           color: 'white',
@@ -71,19 +90,34 @@ const TabHeader: React.FC = () => {
           paddingHorizontal: 15,
           paddingVertical: 8,
         }}
-        onPress={signOut}
+        onPress={() => {
+          navigation.navigate('Profile', {});
+        }}
+        icon={<Ionicons name="person" size={16} color="white" />}
       />
     </View>
   );
 };
 
 
+// Main Dashboard Screen combining Friends and Nearby Matches
+const MainDashboardScreen: React.FC = () => {
+  const colors = useThemeColors();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <TabHeader />
+      <MainDashboard />
+      <FAB />
+    </View>
+  );
+};
+
 // People Screen with header and FAB
 const PeopleScreenWithHeader: React.FC = () => {
   const colors = useThemeColors();
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <TabHeader />
+      <TabHeader title="Friends" />
       <NearbyPeopleScreen />
       <FAB />
     </View>
@@ -95,7 +129,7 @@ const MatchesScreenWithHeader: React.FC = () => {
   const colors = useThemeColors();
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <TabHeader />
+      <TabHeader title="Matches" />
       <NearbyMatchesScreen />
       <FAB />
     </View>
@@ -107,6 +141,7 @@ const ProfileScreenWithHeader: React.FC = () => {
   const colors = useThemeColors();
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <TabHeader title="Profile" />
       <ProfileScreen />
       <FAB />
     </View>
@@ -124,7 +159,9 @@ export const TabNavigator: React.FC = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
-          if (route.name === 'People') {
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Friends') {
             iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Matches') {
             iconName = focused ? 'basketball' : 'basketball-outline';
@@ -155,10 +192,17 @@ export const TabNavigator: React.FC = () => {
       })}
     >
       <Tab.Screen
-        name="People"
+        name="Home"
+        component={MainDashboardScreen}
+        options={{
+          tabBarLabel: 'Home',
+        }}
+      />
+      <Tab.Screen
+        name="Friends"
         component={PeopleScreenWithHeader}
         options={{
-          tabBarLabel: 'People',
+          tabBarLabel: 'Friends',
         }}
       />
       <Tab.Screen

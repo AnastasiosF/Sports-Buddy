@@ -11,7 +11,7 @@ import { useThemeColors } from '../hooks/useThemeColors';
 
 export type MainStackParamList = {
   Tabs: undefined;
-  Profile: { userId: string };
+  Profile: { userId?: string };
   MatchDetails: { matchId: string };
   Chat: { matchId: string };
   Settings: undefined;
@@ -20,6 +20,9 @@ export type MainStackParamList = {
   CreateMatch: undefined;
   UserSearch: { matchId?: string; sport_id?: string };
   MatchSearch: undefined;
+  Home: undefined;
+  Friends: undefined;
+  Matches: undefined;
 };
 
 const Stack = createStackNavigator<MainStackParamList>();
