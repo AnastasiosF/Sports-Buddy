@@ -9,12 +9,16 @@ import {
   ButtonGroup,
   Slider
 } from '@rneui/themed';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useLocation } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useMatchInvitations } from '../contexts/MatchInvitationsContext';
 import { locationService } from '../services/locationService';
 import { sportsService } from '../services/sportsService';
 import { matchService } from '../services/matchService';
-import { FriendRequestNotification } from '../components';
+import { FriendRequestNotification, MatchInvitationNotification } from '../components';
+import { JoinRequestsNotification } from '../components/JoinRequestsNotification';
 import { Match, Sport, formatDistance, formatDateTime, formatDuration } from '../types';
 
 interface NearbyMatch extends Match {
@@ -22,8 +26,10 @@ interface NearbyMatch extends Match {
 }
 
 export const NearbyMatchesScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { location, loading: locationLoading, updateLocation } = useLocation();
   const { user } = useAuth();
+  const { requestToJoinMatch } = useMatchInvitations();
   const [matches, setMatches] = useState<NearbyMatch[]>([]);
   const [userMatches, setUserMatches] = useState<{ created: Match[], participated: Match[] }>({ created: [], participated: [] });
   const [loading, setLoading] = useState(false);
@@ -195,12 +201,10 @@ export const NearbyMatchesScreen: React.FC = () => {
 
   const handleJoinMatch = async (matchId: string) => {
     try {
-      await matchService.joinMatch(matchId);
-      Alert.alert('Success', 'You have joined the match!');
+      await requestToJoinMatch(matchId);
       await searchNearbyMatches(); // Refresh the list
     } catch (error: any) {
-      console.error('Failed to join match:', error);
-      Alert.alert('Error', error.message || 'Failed to join match. Please try again.');
+      console.error('Failed to request to join match:', error);
     }
   };
 
@@ -277,15 +281,16 @@ export const NearbyMatchesScreen: React.FC = () => {
           buttonStyle={[styles.actionButton, { backgroundColor: '#6c757d' }]}
           titleStyle={{ color: 'white' }}
           onPress={() => {
-            // Navigate to match details
-            console.log('View match details:', item.id);
+            (navigation as any).navigate('MatchDetails', { matchId: item.id });
           }}
         />
         {item.status === 'open' && (
           <Button
-            title="Join Match"
+            title="Request to Join"
             buttonStyle={[styles.actionButton, styles.joinButton]}
+            titleStyle={{ fontSize: 12 }}
             onPress={() => handleJoinMatch(item.id)}
+            icon={<Ionicons name="person-add" size={14} color="white" style={{ marginRight: 5 }} />}
           />
         )}
       </View>
@@ -303,6 +308,8 @@ export const NearbyMatchesScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <FriendRequestNotification />
+      <MatchInvitationNotification />
+      <JoinRequestsNotification />
       <View style={styles.header}>
         <Text h4 style={styles.title}>Matches</Text>
         

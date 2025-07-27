@@ -7,6 +7,7 @@ import { SportsSelectionScreen } from '../screens/profile/SportsSelectionScreen'
 import { CreateMatchScreen } from '../screens/CreateMatchScreen';
 import { UserSearchScreen } from '../screens/UserSearchScreen';
 import { MatchSearchScreen } from '../screens/MatchSearchScreen';
+import { MatchDetailsScreen } from '../screens/MatchDetailsScreen';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 export type MainStackParamList = {
@@ -85,6 +86,14 @@ export const MainStack: React.FC = () => {
           component={MatchSearchScreen}
           options={{
             headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="MatchDetails"
+          component={MatchDetailsScreen}
+          options={{
+            title: 'Match Details',
+            headerShown: true,
           }}
         />
         {/* Additional screens will be added here */}

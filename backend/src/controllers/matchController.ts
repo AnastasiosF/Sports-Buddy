@@ -525,8 +525,8 @@ export const updateMatch = async (req: Request, res: Response) => {
 /**
  * POST /api/matches/:id/join
  * 
- * Allows an authenticated user to join an existing match as a participant.
- * Includes validation for match availability, capacity, and duplicate participation.
+ * Allows an authenticated user to request to join an existing match.
+ * Creates a pending participant entry that requires match creator approval.
  * 
  * Path Parameters:
  * - id (string, required): Unique identifier of the match to join
@@ -536,22 +536,22 @@ export const updateMatch = async (req: Request, res: Response) => {
  * Features:
  * - Validates match exists and is open for joining
  * - Checks if match has reached maximum participant capacity
- * - Prevents duplicate participation (user can't join same match twice)
- * - Automatically sets participant status to "confirmed"
- * - Updates match status to "full" when capacity is reached
+ * - Prevents duplicate requests (user can't request same match twice)
+ * - Creates pending participant entry for creator approval
+ * - Does not directly add user to match (requires approval)
  * 
  * Business Logic:
  * 1. Verify match exists and status is "open"
  * 2. Check current participant count against max_participants
- * 3. Ensure user hasn't already joined this match
- * 4. Add user as confirmed participant
- * 5. Update match status to "full" if at capacity after joining
+ * 3. Ensure user hasn't already joined or requested this match
+ * 4. Add user as pending participant (awaiting approval)
+ * 5. Match creator will receive notification to approve/deny
  * 
  * Response Format:
  * {
  *   "match_id": "uuid",
  *   "user_id": "uuid",
- *   "status": "confirmed",
+ *   "status": "pending",
  *   "joined_at": "ISO 8601 datetime",
  *   "user": {
  *     "id": "uuid",
@@ -565,12 +565,12 @@ export const updateMatch = async (req: Request, res: Response) => {
  * Rate Limiting: None
  * 
  * Use Cases:
- * - Join available sports matches
- * - Participate in local sports events
- * - Connect with other players
+ * - Request to join sports matches
+ * - Send join request to match organizers
+ * - Express interest in participating
  * 
  * Error Responses:
- * - 400: Bad request (match full, already joined, etc.)
+ * - 400: Bad request (match full, already requested, etc.)
  * - 401: Authentication required
  * - 404: Match not found or not open
  * - 500: Internal server error
@@ -578,7 +578,7 @@ export const updateMatch = async (req: Request, res: Response) => {
  * Error Messages:
  * - "Match not found or not open"
  * - "Match is full"
- * - "User already joined this match"
+ * - "User already requested or joined this match"
  */
 export const joinMatch = async (req: Request, res: Response) => {
   try {
@@ -618,16 +618,21 @@ export const joinMatch = async (req: Request, res: Response) => {
       .single();
 
     if (existingParticipant) {
-      return res.status(400).json({ error: 'User already joined this match' });
+      const status = existingParticipant.status;
+      if (status === 'confirmed') {
+        return res.status(400).json({ error: 'User already joined this match' });
+      } else if (status === 'pending') {
+        return res.status(400).json({ error: 'Join request already sent for this match' });
+      }
     }
 
-    // Add participant
+    // Add participant as pending (join request)
     const { data, error } = await supabase
       .from('match_participants')
       .insert([{
         match_id: id,
         user_id,
-        status: 'confirmed',
+        status: 'pending',
       }])
       .select(`
         *,
@@ -639,15 +644,10 @@ export const joinMatch = async (req: Request, res: Response) => {
       return res.status(400).json({ error: error.message });
     }
 
-    // Update match status to full if at capacity
-    if (participantCount + 1 >= match.max_participants) {
-      await supabase
-        .from('matches')
-        .update({ status: 'full' })
-        .eq('id', id);
-    }
-
-    res.status(201).json(data);
+    res.status(201).json({
+      ...data,
+      message: 'Join request sent successfully. The match creator will be notified.'
+    });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1141,6 +1141,299 @@ export const respondToInvitation = async (req: Request, res: Response) => {
     res.json(data);
   } catch (error) {
     console.error('Error responding to invitation:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/matches/invitations/received
+ * 
+ * Gets all pending match invitations for the authenticated user.
+ * Returns invitations where the user has been invited but not yet responded.
+ * 
+ * Authentication: Required (JWT token)
+ * 
+ * Response Format:
+ * [
+ *   {
+ *     "id": "uuid",
+ *     "match_id": "uuid",
+ *     "user_id": "uuid",
+ *     "status": "pending",
+ *     "joined_at": "ISO 8601 datetime",
+ *     "match": {
+ *       "id": "uuid",
+ *       "title": "string",
+ *       "sport": { "name": "string" },
+ *       "creator": { "username": "string", "avatar_url": "string" },
+ *       "scheduled_at": "ISO 8601 datetime",
+ *       "location_name": "string"
+ *     }
+ *   }
+ * ]
+ */
+export const getReceivedInvitations = async (req: Request, res: Response) => {
+  try {
+    const user_id = req.user?.id;
+
+    if (!user_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { data, error } = await supabase
+      .from('match_participants')
+      .select(`
+        id,
+        match_id,
+        user_id,
+        status,
+        joined_at,
+        match:matches (
+          id,
+          title,
+          scheduled_at,
+          location_name,
+          sport:sports (name),
+          creator:profiles!created_by (username, full_name, avatar_url)
+        )
+      `)
+      .eq('user_id', user_id)
+      .eq('status', 'pending')
+      .order('joined_at', { ascending: false });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error getting received invitations:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/matches/requests/received
+ * 
+ * Gets all pending join requests for matches created by the authenticated user.
+ * Returns users who want to join the user's matches.
+ * 
+ * Authentication: Required (JWT token)
+ * 
+ * Response Format:
+ * [
+ *   {
+ *     "id": "uuid",
+ *     "match_id": "uuid",
+ *     "user_id": "uuid",
+ *     "status": "pending",
+ *     "created_at": "ISO 8601 datetime",
+ *     "match": {
+ *       "id": "uuid",
+ *       "title": "string",
+ *       "sport": { "name": "string" },
+ *       "scheduled_at": "ISO 8601 datetime",
+ *       "location_name": "string"
+ *     },
+ *     "user": {
+ *       "username": "string",
+ *       "full_name": "string",
+ *       "avatar_url": "string"
+ *     }
+ *   }
+ * ]
+ */
+export const getJoinRequests = async (req: Request, res: Response) => {
+  try {
+    const creator_id = req.user?.id;
+
+    if (!creator_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // First get match IDs created by this user
+    const { data: userMatches, error: userMatchError } = await supabase
+      .from('matches')
+      .select('id')
+      .eq('created_by', creator_id);
+
+    if (userMatchError) {
+      return res.status(400).json({ error: userMatchError.message });
+    }
+
+    const matchIds = userMatches?.map(m => m.id) || [];
+    
+    if (matchIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Get all pending join requests for these matches
+    const { data, error } = await supabase
+      .from('match_participants')
+      .select(`
+        id,
+        match_id,
+        user_id,
+        status,
+        joined_at as created_at,
+        match:matches (
+          id,
+          title,
+          scheduled_at,
+          location_name,
+          sport:sports (name)
+        ),
+        user:profiles (username, full_name, avatar_url)
+      `)
+      .eq('status', 'pending')
+      .in('match_id', matchIds)
+      .order('joined_at', { ascending: false });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Error getting join requests:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * POST /api/matches/requests/:requestId/accept
+ * 
+ * Accept a join request for a match.
+ * Only the match creator can accept join requests.
+ * 
+ * Path Parameters:
+ * - requestId (string, required): ID of the join request to accept
+ * 
+ * Authentication: Required (JWT token)
+ * Authorization: Only match creator can accept
+ */
+export const acceptJoinRequest = async (req: Request, res: Response) => {
+  try {
+    const { requestId } = req.params;
+    const creator_id = req.user?.id;
+
+    if (!creator_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Get the join request and verify it's for a match created by this user
+    const { data: request, error: requestError } = await supabase
+      .from('match_participants')
+      .select(`
+        *,
+        match:matches (created_by, max_participants)
+      `)
+      .eq('id', requestId)
+      .eq('status', 'pending')
+      .single();
+
+    if (requestError || !request) {
+      return res.status(404).json({ error: 'Join request not found' });
+    }
+
+    // Verify user is the match creator
+    if (request.match.created_by !== creator_id) {
+      return res.status(403).json({ error: 'Only match creator can accept join requests' });
+    }
+
+    // Check if match still has space
+    const { data: confirmedParticipants } = await supabase
+      .from('match_participants')
+      .select('count')
+      .eq('match_id', request.match_id)
+      .eq('status', 'confirmed');
+
+    const confirmedCount = confirmedParticipants?.length || 0;
+    if (confirmedCount >= request.match.max_participants) {
+      return res.status(400).json({ error: 'Match is now full' });
+    }
+
+    // Accept the request
+    const { data, error } = await supabase
+      .from('match_participants')
+      .update({ status: 'confirmed' })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Check if match is now full
+    if (confirmedCount + 1 >= request.match.max_participants) {
+      await supabase
+        .from('matches')
+        .update({ status: 'full' })
+        .eq('id', request.match_id);
+    }
+
+    res.json({ message: 'Join request accepted successfully', data });
+  } catch (error) {
+    console.error('Error accepting join request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * POST /api/matches/requests/:requestId/decline
+ * 
+ * Decline a join request for a match.
+ * Only the match creator can decline join requests.
+ * 
+ * Path Parameters:
+ * - requestId (string, required): ID of the join request to decline
+ * 
+ * Authentication: Required (JWT token)
+ * Authorization: Only match creator can decline
+ */
+export const declineJoinRequest = async (req: Request, res: Response) => {
+  try {
+    const { requestId } = req.params;
+    const creator_id = req.user?.id;
+
+    if (!creator_id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Get the join request and verify it's for a match created by this user
+    const { data: request, error: requestError } = await supabase
+      .from('match_participants')
+      .select(`
+        *,
+        match:matches (created_by)
+      `)
+      .eq('id', requestId)
+      .eq('status', 'pending')
+      .single();
+
+    if (requestError || !request) {
+      return res.status(404).json({ error: 'Join request not found' });
+    }
+
+    // Verify user is the match creator
+    if (request.match.created_by !== creator_id) {
+      return res.status(403).json({ error: 'Only match creator can decline join requests' });
+    }
+
+    // Decline the request (remove the entry)
+    const { error } = await supabase
+      .from('match_participants')
+      .delete()
+      .eq('id', requestId);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ message: 'Join request declined successfully' });
+  } catch (error) {
+    console.error('Error declining join request:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

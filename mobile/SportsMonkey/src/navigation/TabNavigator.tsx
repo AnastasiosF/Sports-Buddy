@@ -71,9 +71,8 @@ const TabHeader: React.FC<TabHeaderProps> = ({ title }) => {
             }}
             buttonStyle={{
               justifyContent: 'flex-start',
-              paddingLeft: 0,
             }}
-            disabled
+
           />
         )}
       </View>
@@ -151,7 +150,7 @@ const ProfileScreenWithHeader: React.FC = () => {
 export const TabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({

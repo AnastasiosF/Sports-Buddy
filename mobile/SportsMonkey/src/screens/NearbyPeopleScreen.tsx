@@ -26,7 +26,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useFriends } from '../contexts/FriendsContext';
 import { locationService } from '../services/locationService';
 import { sportsService } from '../services/sportsService';
-import { FriendRequestNotification } from '../components';
+import { FriendRequestNotification, MatchInvitationNotification } from '../components';
 import {
   Profile,
   Sport,
@@ -683,6 +683,7 @@ export const NearbyPeopleScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <FriendRequestNotification />
+      <MatchInvitationNotification />
       <FlatList
         data={activeTab === 1 && pendingRequests.length > 0
           ? [...pendingRequests, ...getCurrentData()]

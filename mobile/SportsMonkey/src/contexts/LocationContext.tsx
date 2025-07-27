@@ -127,8 +127,8 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const locationResult = await Location.getCurrentPositionAsync({
         accuracy,
-        maximumAge: 60000, // 1 minute cache
-        timeout: 15000, // 15 second timeout
+        // maximumAge: 60000, // 1 minute cache - not supported in this version
+        // timeout: 15000, // 15 second timeout - not supported in this version
       });
 
       const newLocation: LocationType = {

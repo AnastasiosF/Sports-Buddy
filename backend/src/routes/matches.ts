@@ -30,7 +30,11 @@ import {
   leaveMatch,
   getUserMatches,
   inviteToMatch,
-  respondToInvitation
+  respondToInvitation,
+  getReceivedInvitations,
+  getJoinRequests,
+  acceptJoinRequest,
+  declineJoinRequest
 } from '../controllers/matchController';
 import { authenticateUser, verifyMatchCreator, optionalAuth } from '../middleware/auth';
 import { matchCreationRateLimit, searchRateLimit } from '../middleware/security';
@@ -55,6 +59,12 @@ router.get('/', searchRateLimit, optionalAuth, getMatches);
 // NOTE: This route must come before /:id to avoid conflicts
 router.get('/user', authenticateUser, getUserMatches);
 
+// GET /api/matches/invitations/received - Get received match invitations
+router.get('/invitations/received', authenticateUser, getReceivedInvitations);
+
+// GET /api/matches/requests/received - Get join requests for user's matches
+router.get('/requests/received', authenticateUser, getJoinRequests);
+
 // GET /api/matches/:id - Get specific match details
 router.get('/:id', optionalAuth, getMatch);
 
@@ -75,5 +85,11 @@ router.post('/:id/invite', authenticateUser, verifyMatchCreator, inviteToMatch);
 
 // POST /api/matches/:id/respond - Respond to match invitation
 router.post('/:id/respond', authenticateUser, respondToInvitation);
+
+// POST /api/matches/requests/:requestId/accept - Accept join request
+router.post('/requests/:requestId/accept', authenticateUser, acceptJoinRequest);
+
+// POST /api/matches/requests/:requestId/decline - Decline join request
+router.post('/requests/:requestId/decline', authenticateUser, declineJoinRequest);
 
 export default router;

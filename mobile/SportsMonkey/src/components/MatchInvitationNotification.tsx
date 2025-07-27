@@ -10,40 +10,10 @@ import {
 import { Avatar } from '@rneui/themed';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { matchService } from '../services/matchService';
-import { Match, MatchParticipant } from '../types';
+import { useMatchInvitations } from '../contexts/MatchInvitationsContext';
 
-interface MatchInvitation {
-  id: string;
-  match_id: string;
-  user_id: string;
-  status: 'pending';
-  joined_at: string;
-  match: {
-    id: string;
-    title: string;
-    sport?: {
-      name: string;
-    };
-    creator?: {
-      username: string;
-      full_name?: string;
-      avatar_url?: string;
-    };
-    scheduled_at: string;
-    location_name: string;
-  };
-}
-
-interface MatchInvitationNotificationProps {
-  invitations: MatchInvitation[];
-  onInvitationResponded: (invitationId: string) => void;
-}
-
-export const MatchInvitationNotification: React.FC<MatchInvitationNotificationProps> = ({
-  invitations,
-  onInvitationResponded,
-}) => {
+export const MatchInvitationNotification: React.FC = () => {
+  const { receivedInvitations, acceptInvitation, declineInvitation } = useMatchInvitations();
   const [currentInvitationIndex, setCurrentInvitationIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-100));
@@ -51,19 +21,19 @@ export const MatchInvitationNotification: React.FC<MatchInvitationNotificationPr
   const colors = useThemeColors();
 
   useEffect(() => {
-    if (invitations.length > 0 && !isVisible) {
+    if (receivedInvitations.length > 0 && !isVisible) {
       showNotification();
-    } else if (invitations.length === 0 && isVisible) {
+    } else if (receivedInvitations.length === 0 && isVisible) {
       hideNotification();
     }
-  }, [invitations.length]);
+  }, [receivedInvitations.length]);
 
   // Reset current index if it's out of bounds
   useEffect(() => {
-    if (currentInvitationIndex >= invitations.length && invitations.length > 0) {
+    if (currentInvitationIndex >= receivedInvitations.length && receivedInvitations.length > 0) {
       setCurrentInvitationIndex(0);
     }
-  }, [invitations.length, currentInvitationIndex]);
+  }, [receivedInvitations.length, currentInvitationIndex]);
 
   const showNotification = () => {
     setIsVisible(true);
@@ -87,67 +57,57 @@ export const MatchInvitationNotification: React.FC<MatchInvitationNotificationPr
   };
 
   const handleAccept = async () => {
-    if (invitations.length === 0) return;
+    if (receivedInvitations.length === 0) return;
 
-    const currentInvitation = invitations[currentInvitationIndex];
+    const currentInvitation = receivedInvitations[currentInvitationIndex];
     setLoading(true);
 
     try {
-      await matchService.respondToInvitation(currentInvitation.match_id, 'accept');
-      
-      onInvitationResponded(currentInvitation.id);
+      await acceptInvitation(currentInvitation.match_id);
       
       // Adjust current index if needed
-      if (currentInvitationIndex >= invitations.length - 1 && invitations.length > 1) {
-        setCurrentInvitationIndex(invitations.length - 2);
+      if (currentInvitationIndex >= receivedInvitations.length - 1 && receivedInvitations.length > 1) {
+        setCurrentInvitationIndex(receivedInvitations.length - 2);
       }
-
-      Alert.alert(
-        'Success!', 
-        `You've joined "${currentInvitation.match.title}". Check your matches to see details.`
-      );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to accept match invitation');
+      // Error handling is done in the context
     } finally {
       setLoading(false);
     }
   };
 
   const handleReject = async () => {
-    if (invitations.length === 0) return;
+    if (receivedInvitations.length === 0) return;
 
-    const currentInvitation = invitations[currentInvitationIndex];
+    const currentInvitation = receivedInvitations[currentInvitationIndex];
     setLoading(true);
 
     try {
-      await matchService.respondToInvitation(currentInvitation.match_id, 'decline');
-      
-      onInvitationResponded(currentInvitation.id);
+      await declineInvitation(currentInvitation.match_id);
       
       // Adjust current index if needed
-      if (currentInvitationIndex >= invitations.length - 1 && invitations.length > 1) {
-        setCurrentInvitationIndex(invitations.length - 2);
+      if (currentInvitationIndex >= receivedInvitations.length - 1 && receivedInvitations.length > 1) {
+        setCurrentInvitationIndex(receivedInvitations.length - 2);
       }
-
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to decline match invitation');
+      // Error handling is done in the context
     } finally {
       setLoading(false);
     }
   };
 
   const handleNext = () => {
-    if (invitations.length > 1) {
+    if (receivedInvitations.length > 1) {
       setCurrentInvitationIndex((prevIndex) => 
-        prevIndex === invitations.length - 1 ? 0 : prevIndex + 1
+        prevIndex === receivedInvitations.length - 1 ? 0 : prevIndex + 1
       );
     }
   };
 
   const handlePrevious = () => {
-    if (invitations.length > 1) {
+    if (receivedInvitations.length > 1) {
       setCurrentInvitationIndex((prevIndex) => 
-        prevIndex === 0 ? invitations.length - 1 : prevIndex - 1
+        prevIndex === 0 ? receivedInvitations.length - 1 : prevIndex - 1
       );
     }
   };
@@ -156,7 +116,7 @@ export const MatchInvitationNotification: React.FC<MatchInvitationNotificationPr
     hideNotification();
     // Show again after 5 minutes if there are still pending invitations
     setTimeout(() => {
-      if (invitations.length > 0) {
+      if (receivedInvitations.length > 0) {
         showNotification();
       }
     }, 5 * 60 * 1000);
@@ -170,11 +130,11 @@ export const MatchInvitationNotification: React.FC<MatchInvitationNotificationPr
     });
   };
 
-  if (invitations.length === 0 || !isVisible) {
+  if (receivedInvitations.length === 0 || !isVisible) {
     return null;
   }
 
-  const currentInvitation = invitations[currentInvitationIndex];
+  const currentInvitation = receivedInvitations[currentInvitationIndex];
   const match = currentInvitation.match;
 
   return (
@@ -193,9 +153,9 @@ export const MatchInvitationNotification: React.FC<MatchInvitationNotificationPr
             <Ionicons name="basketball-outline" size={20} color={colors.primary} />
           </View>
           <Text style={styles.headerText}>Match Invitation</Text>
-          {invitations.length > 1 && (
+          {receivedInvitations.length > 1 && (
             <Text style={styles.counter}>
-              {currentInvitationIndex + 1} of {invitations.length}
+              {currentInvitationIndex + 1} of {receivedInvitations.length}
             </Text>
           )}
         </View>
@@ -231,7 +191,7 @@ export const MatchInvitationNotification: React.FC<MatchInvitationNotificationPr
           </View>
 
           {/* Navigation arrows (if multiple invitations) */}
-          {invitations.length > 1 && (
+          {receivedInvitations.length > 1 && (
             <View style={styles.navigationSection}>
               <TouchableOpacity
                 onPress={handlePrevious}

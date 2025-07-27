@@ -193,10 +193,10 @@ export const CreateMatchScreen: React.FC = () => {
           [
             { 
               text: 'Invite Players Now', 
-              onPress: () => navigation.navigate('UserSearch' as never, { 
+              onPress: () => (navigation as any).navigate('UserSearch', { 
                 matchId: createdMatch.id,
                 sport_id: selectedSport!.id 
-              } as never)
+              })
             }
           ]
         );
@@ -208,10 +208,10 @@ export const CreateMatchScreen: React.FC = () => {
             { text: 'Done', onPress: () => navigation.goBack() },
             { 
               text: 'Invite Players', 
-              onPress: () => navigation.navigate('UserSearch' as never, { 
+              onPress: () => (navigation as any).navigate('UserSearch', { 
                 matchId: createdMatch.id,
                 sport_id: selectedSport!.id 
-              } as never)
+              })
             }
           ]
         );
