@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import type { MainStackParamList } from '../navigation/MainStack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemeColors } from '../hooks/useThemeColors';
+import { useAppTheme } from '../hooks/useThemeColors';
 
 interface FABAction {
   icon: keyof typeof Ionicons.glyphMap;
@@ -29,7 +29,8 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [animation] = useState(new Animated.Value(0));
-  const colors = useThemeColors();
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
 
   const defaultActions: FABAction[] = [
     {
@@ -39,7 +40,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
         navigation.navigate('Profile', {});
         toggleMenu();
       },
-      color: '#9C27B0',
+      color: theme.colors.secondary,
     },
     {
       icon: 'basketball-outline',
@@ -48,7 +49,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
         navigation.navigate('CreateMatch');
         toggleMenu();
       },
-      color: '#4CAF50',
+      color: theme.colors.success,
     },
     {
       icon: 'search-outline',
@@ -57,7 +58,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
         navigation.navigate('MatchSearch');
         toggleMenu();
       },
-      color: '#2196F3',
+      color: theme.colors.primary,
     },
   ];
 
@@ -92,7 +93,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
   });
 
   return (
-    <View style={[styles.container, { bottom: 20 + insets.bottom }]}>
+    <View style={[styles.container, { bottom: theme.spacing.lg + insets.bottom, right: theme.spacing.lg }]}>
       {/* Action Items */}
       {fabActions.map((action, index) => (
         <Animated.View
@@ -106,7 +107,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
                 {
                   translateY: animation.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, -(60 * (index + 1))],
+                    outputRange: [0, -(theme.spacing.xl + theme.spacing.lg) * (index + 1)],
                   }),
                 },
               ],
@@ -118,7 +119,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                { backgroundColor: action.color || colors.primary },
+                { backgroundColor: action.color || theme.colors.primary },
               ]}
               onPress={action.onPress}
               activeOpacity={0.8}
@@ -126,7 +127,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
               <Ionicons
                 name={action.icon}
                 size={20}
-                color="white"
+                color={theme.colors.surface}
               />
             </TouchableOpacity>
           </View>
@@ -135,7 +136,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
 
       {/* Main FAB Button */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }]}
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         onPress={toggleMenu}
         activeOpacity={0.8}
       >
@@ -143,7 +144,7 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
           <Ionicons
             name="add"
             size={24}
-            color="white"
+            color={theme.colors.surface}
           />
         </Animated.View>
       </TouchableOpacity>
@@ -160,23 +161,18 @@ export const FAB: React.FC<FABProps> = ({ actions }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     position: 'absolute',
-    right: 20,
     alignItems: 'flex-end',
   },
   fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: theme.spacing.xl + theme.spacing.lg,
+    height: theme.spacing.xl + theme.spacing.lg,
+    borderRadius: (theme.spacing.xl + theme.spacing.lg) / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    ...theme.shadows.lg,
     zIndex: 1000,
   },
   actionContainer: {
@@ -188,29 +184,25 @@ const styles = StyleSheet.create({
   actionWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: theme.spacing.xl + theme.spacing.sm,
+    height: theme.spacing.xl + theme.spacing.sm,
+    borderRadius: (theme.spacing.xl + theme.spacing.sm) / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...theme.shadows.md,
   },
   actionLabel: {
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    color: 'white',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    fontSize: 12,
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
+    paddingHorizontal: theme.spacing.sm + theme.spacing.xs,
+    paddingVertical: theme.spacing.xs + 2,
+    borderRadius: theme.borderRadius.md + theme.borderRadius.sm,
+    fontSize: theme.fontSize.sm,
     fontWeight: '500',
-    marginRight: 12,
+    marginRight: theme.spacing.sm + theme.spacing.xs,
     overflow: 'hidden',
   },
   backdrop: {
