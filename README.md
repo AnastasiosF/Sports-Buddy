@@ -467,7 +467,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) file for 
 
 ## 📞 Support
 
-- **Documentation**: Check [CLAUDE.md](CLAUDE.md) for development guidance
+- **Documentation**: Check [DEVELOPMENT.md](DEVELOPMENT.md) for development guidance
 - **Issues**: Create GitHub issues for bugs and feature requests
 - **Architecture**: Review [API_ARCHITECTURE.md](API_ARCHITECTURE.md) for technical details
 
