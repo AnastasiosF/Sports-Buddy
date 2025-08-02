@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  SafeAreaView,
 } from 'react-native';
 import {
   Input,
@@ -233,7 +234,7 @@ export const MatchSearchScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Header
         centerComponent={{ 
           text: 'Search Matches', 
@@ -340,7 +341,7 @@ export const MatchSearchScreen: React.FC = () => {
           {matches.map(renderMatchCard)}
         </ScrollView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

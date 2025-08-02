@@ -15,15 +15,16 @@ import {
   Badge,
 } from '@rneui/themed';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import type { MainStackParamList } from '../navigation/MainStack';
 import { useLocation } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useFriends } from '../contexts/FriendsContext';
 import { useMatchInvitations } from '../contexts/MatchInvitationsContext';
 import { locationService } from '../services/locationService';
 import { matchService } from '../services/matchService';
-import { useThemeColors } from '../hooks/useThemeColors';
-import { MatchInvitationNotification } from '../components';
+import { useAppTheme } from '../hooks/useThemeColors';
+import { MatchInvitationNotification, FAB } from '../components';
 import {
   Profile,
   Match,
@@ -43,12 +44,13 @@ interface NearbyMatch extends Match {
 const { width } = Dimensions.get('window');
 
 export const MainDashboard: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<MainStackParamList>>();
   const { location, loading: locationLoading, updateLocation } = useLocation();
   const { user } = useAuth();
   const { friends, pendingRequests } = useFriends();
   const { receivedInvitations, joinRequests } = useMatchInvitations();
-  const colors = useThemeColors();
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
   
   const [nearbyUsers, setNearbyUsers] = useState<NearbyUser[]>([]);
   const [nearbyMatches, setNearbyMatches] = useState<NearbyMatch[]>([]);
@@ -124,15 +126,15 @@ export const MainDashboard: React.FC = () => {
     <Card containerStyle={styles.sectionCard}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
-          <Ionicons name="people" size={24} color={colors.primary} />
+          <Ionicons name="people" size={24} color={theme.colors.primary} />
           <Text style={styles.sectionTitle}>Friends</Text>
         </View>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Friends' as never)}
+          onPress={() => navigation.navigate('Friends')}
           style={styles.viewAllButton}
         >
           <Text style={styles.viewAllText}>View All</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
       
@@ -191,9 +193,9 @@ export const MainDashboard: React.FC = () => {
               title={getInitials(friendship.friend.full_name || friendship.friend.username)}
               containerStyle={[
                 styles.friendAvatar,
-                { backgroundColor: friendship.friend.avatar_url ? 'transparent' : colors.primary }
+                { backgroundColor: friendship.friend.avatar_url ? 'transparent' : theme.colors.primary }
               ]}
-              titleStyle={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}
+              titleStyle={{ color: theme.colors.surface, fontSize: 14, fontWeight: 'bold' }}
             />
             <Text style={styles.friendName} numberOfLines={1}>
               {friendship.friend.username}
@@ -203,7 +205,7 @@ export const MainDashboard: React.FC = () => {
         
         {friends.length === 0 && (
           <View style={styles.emptyFriends}>
-            <Ionicons name="person-add-outline" size={32} color="#ccc" />
+            <Ionicons name="person-add-outline" size={32} color={theme.colors.border} />
             <Text style={styles.emptyText}>No friends yet</Text>
             <Text style={styles.emptySubtext}>Find sports buddies nearby!</Text>
           </View>
@@ -216,15 +218,15 @@ export const MainDashboard: React.FC = () => {
     <Card containerStyle={styles.sectionCard}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
-          <Ionicons name="location" size={24} color={colors.primary} />
+          <Ionicons name="location" size={24} color={theme.colors.primary} />
           <Text style={styles.sectionTitle}>Nearby Matches</Text>
         </View>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Matches' as never)}
+          onPress={() => navigation.navigate('Matches')}
           style={styles.viewAllButton}
         >
           <Text style={styles.viewAllText}>View All</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -240,7 +242,7 @@ export const MainDashboard: React.FC = () => {
                 <Text style={styles.matchTitle} numberOfLines={1}>{match.title}</Text>
                 <Text style={styles.matchSport}>{match.sport?.name}</Text>
                 <View style={styles.matchLocation}>
-                  <Ionicons name="location-outline" size={12} color="#666" />
+                  <Ionicons name="location-outline" size={12} color={theme.colors.textSecondary} />
                   <Text style={styles.matchDistance}>
                     {formatDistance(match.distance)} away
                   </Text>
@@ -261,7 +263,7 @@ export const MainDashboard: React.FC = () => {
         ))
       ) : (
         <View style={styles.emptyMatches}>
-          <Ionicons name="basketball-outline" size={32} color="#ccc" />
+          <Ionicons name="basketball-outline" size={32} color={theme.colors.border} />
           <Text style={styles.emptyText}>No matches nearby</Text>
           <Text style={styles.emptySubtext}>Create one or expand your search!</Text>
         </View>
@@ -273,21 +275,35 @@ export const MainDashboard: React.FC = () => {
     <Card containerStyle={styles.sectionCard}>
       <Text style={styles.sectionTitle}>Quick Actions</Text>
       <View style={styles.quickActionsGrid}>
-        <TouchableOpacity
-          style={[styles.quickActionItem, { backgroundColor: '#4CAF50' }]}
-          onPress={() => navigation.navigate('CreateMatch' as never)}
-        >
-          <Ionicons name="add-circle" size={24} color="white" />
-          <Text style={styles.quickActionText}>Create Match</Text>
-        </TouchableOpacity>
+        <Button
+          title="Create Match"
+          onPress={() => navigation.navigate('CreateMatch')}
+          buttonStyle={[styles.quickActionButton, { backgroundColor: theme.colors.success }]}
+          titleStyle={styles.quickActionButtonText}
+          icon={
+            <Ionicons 
+              name="add-circle" 
+              size={20} 
+              color={theme.colors.surface}
+              style={{ marginRight: theme.spacing.sm }}
+            />
+          }
+        />
         
-        <TouchableOpacity
-          style={[styles.quickActionItem, { backgroundColor: '#2196F3' }]}
-          onPress={() => navigation.navigate('MatchSearch' as never)}
-        >
-          <Ionicons name="search" size={24} color="white" />
-          <Text style={styles.quickActionText}>Find Matches</Text>
-        </TouchableOpacity>
+        <Button
+          title="Find Matches"
+          onPress={() => navigation.navigate('MatchSearch')}
+          buttonStyle={[styles.quickActionButton, { backgroundColor: theme.colors.primary }]}
+          titleStyle={styles.quickActionButtonText}
+          icon={
+            <Ionicons 
+              name="search" 
+              size={20} 
+              color={theme.colors.surface}
+              style={{ marginRight: theme.spacing.sm }}
+            />
+          }
+        />
       </View>
     </Card>
   );
@@ -295,7 +311,7 @@ export const MainDashboard: React.FC = () => {
   if (locationLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Ionicons name="location" size={48} color={colors.primary} />
+        <Ionicons name="location" size={48} color={theme.colors.primary} />
         <Text style={styles.loadingText}>Getting your location...</Text>
       </View>
     );
@@ -310,8 +326,8 @@ export const MainDashboard: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -324,21 +340,21 @@ export const MainDashboard: React.FC = () => {
           Ready to find your next sports adventure?
         </Text>
       </View>
-
+      {renderQuickActions()}
       {renderFriendsSection()}
       {renderNearbyMatchesSection()}
-      {renderQuickActions()}
       
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      <FAB />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -347,32 +363,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
   },
   welcomeSection: {
-    padding: 20,
-    backgroundColor: 'white',
-    marginBottom: 10,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    marginBottom: theme.spacing.sm,
   },
   welcomeText: {
-    fontSize: 24,
+    fontSize: theme.fontSize.xl,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   welcomeSubtext: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   sectionCard: {
-    borderRadius: 12,
-    marginHorizontal: 15,
-    marginBottom: 15,
+    borderRadius: theme.borderRadius.lg,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -384,46 +400,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
   },
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 8,
+    color: theme.colors.text,
+    marginLeft: theme.spacing.sm,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   viewAllText: {
-    fontSize: 14,
-    color: '#2196F3',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
     fontWeight: '500',
-    marginRight: 4,
+    marginRight: theme.spacing.xs,
   },
   notificationsContainer: {
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 8,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
     borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
+    borderLeftColor: theme.colors.primary,
   },
   notificationText: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
     fontWeight: '500',
   },
   notificationBadge: {
@@ -437,43 +453,43 @@ const styles = StyleSheet.create({
   friendItem: {
     width: '22%',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
   },
   friendAvatar: {
-    marginBottom: 5,
+    marginBottom: theme.spacing.xs,
   },
   friendName: {
-    fontSize: 12,
-    color: '#333',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text,
     textAlign: 'center',
     fontWeight: '500',
   },
   emptyFriends: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: theme.spacing.lg,
   },
   emptyMatches: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: theme.spacing.lg,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 10,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
     fontWeight: '500',
   },
   emptySubtext: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 5,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
     textAlign: 'center',
   },
   matchItem: {
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    paddingBottom: 12,
-    marginBottom: 12,
+    borderBottomColor: theme.colors.border,
+    paddingBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   matchHeader: {
     flexDirection: 'row',
@@ -484,54 +500,66 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   matchTitle: {
-    fontSize: 16,
+    fontSize: theme.fontSize.md,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   matchSport: {
-    fontSize: 14,
-    color: '#2196F3',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   matchLocation: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   matchDistance: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 4,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.xs,
   },
   matchBadges: {
     alignItems: 'flex-end',
   },
   statusBadge: {
-    marginBottom: 5,
+    marginBottom: theme.spacing.xs,
   },
   matchTime: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   quickActionsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
+  },
+  quickActionButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    minHeight: 60,
+  },
+  quickActionButtonText: {
+    color: theme.colors.surface,
+    fontSize: theme.fontSize.sm,
+    fontWeight: 'bold',
   },
   quickActionItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 20,
-    borderRadius: 12,
-    marginHorizontal: 5,
+    paddingVertical: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    marginHorizontal: theme.spacing.xs,
   },
   quickActionText: {
-    color: 'white',
-    fontSize: 14,
+    color: theme.colors.surface,
+    fontSize: theme.fontSize.sm,
     fontWeight: 'bold',
-    marginTop: 8,
+    marginTop: theme.spacing.sm,
   },
   bottomSpacing: {
     height: 100,

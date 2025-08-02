@@ -19,6 +19,7 @@ import { sportsService } from '../services/sportsService';
 import { matchService } from '../services/matchService';
 import { FriendRequestNotification, MatchInvitationNotification } from '../components';
 import { JoinRequestsNotification } from '../components/JoinRequestsNotification';
+import { useAppTheme } from '../hooks/useThemeColors';
 import { Match, Sport, formatDistance, formatDateTime, formatDuration } from '../types';
 
 interface NearbyMatch extends Match {
@@ -30,6 +31,7 @@ export const NearbyMatchesScreen: React.FC = () => {
   const { location, loading: locationLoading, updateLocation } = useLocation();
   const { user } = useAuth();
   const { requestToJoinMatch } = useMatchInvitations();
+  const theme = useAppTheme();
   const [matches, setMatches] = useState<NearbyMatch[]>([]);
   const [userMatches, setUserMatches] = useState<{ created: Match[], participated: Match[] }>({ created: [], participated: [] });
   const [loading, setLoading] = useState(false);
@@ -50,9 +52,11 @@ export const NearbyMatchesScreen: React.FC = () => {
   const skillLevels = ['Any Level', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
   const tabs = ['Nearby', 'My Created', 'My Joined'];
 
+  const styles = createStyles(theme);
+
   // Memoize icon objects to prevent SearchBar re-renders
-  const searchIcon = useMemo(() => ({ name: 'search', size: 20, color: '#666' }), []);
-  const clearIcon = useMemo(() => ({ name: 'clear', size: 20, color: '#666' }), []);
+  const searchIcon = useMemo(() => ({ name: 'search', size: 20, color: theme.colors.textSecondary }), [theme.colors.textSecondary]);
+  const clearIcon = useMemo(() => ({ name: 'clear', size: 20, color: theme.colors.textSecondary }), [theme.colors.textSecondary]);
 
   useEffect(() => {
     loadSports();
@@ -278,8 +282,8 @@ export const NearbyMatchesScreen: React.FC = () => {
       <View style={styles.actionButtons}>
         <Button
           title="View Details"
-          buttonStyle={[styles.actionButton, { backgroundColor: '#6c757d' }]}
-          titleStyle={{ color: 'white' }}
+          buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.textSecondary }]}
+          titleStyle={{ color: theme.colors.surface }}
           onPress={() => {
             (navigation as any).navigate('MatchDetails', { matchId: item.id });
           }}
@@ -290,7 +294,7 @@ export const NearbyMatchesScreen: React.FC = () => {
             buttonStyle={[styles.actionButton, styles.joinButton]}
             titleStyle={{ fontSize: 12 }}
             onPress={() => handleJoinMatch(item.id)}
-            icon={<Ionicons name="person-add" size={14} color="white" style={{ marginRight: 5 }} />}
+            icon={<Ionicons name="person-add" size={14} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
           />
         )}
       </View>
@@ -406,10 +410,10 @@ export const NearbyMatchesScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -417,32 +421,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    backgroundColor: 'white',
-    padding: 15,
-    paddingTop: 15,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    paddingTop: theme.spacing.md,
   },
   title: {
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#2196F3',
+    marginBottom: theme.spacing.lg,
+    color: theme.colors.primary,
   },
   tabContainer: {
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
     borderRadius: 25,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme.colors.border,
     borderWidth: 0,
-    marginHorizontal: 10,
+    marginHorizontal: theme.spacing.sm,
   },
   selectedTab: {
-    backgroundColor: '#2196F3',
+    backgroundColor: theme.colors.primary,
     borderRadius: 25,
   },
   tabText: {
-    color: '#666',
-    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.sm,
   },
   selectedTabText: {
-    color: 'white',
+    color: theme.colors.surface,
     fontWeight: 'bold',
   },
   searchContainer: {
@@ -450,140 +454,140 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderBottomWidth: 0,
     paddingHorizontal: 0,
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
   },
   searchInput: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme.colors.border,
   },
   filterLabel: {
-    fontSize: 16,
+    fontSize: theme.fontSize.md,
     fontWeight: 'bold',
-    marginBottom: 5,
-    marginTop: 10,
+    marginBottom: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
   },
   buttonGroup: {
-    marginBottom: 10,
-    borderRadius: 5,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
   },
   filterButton: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.surface,
   },
   buttonText: {
-    fontSize: 12,
+    fontSize: theme.fontSize.xs,
   },
   selectedButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: theme.colors.primary,
   },
   buttonBorder: {
     width: 1,
-    color: '#e0e0e0',
+    color: theme.colors.border,
   },
   slider: {
-    marginVertical: 10,
+    marginVertical: theme.spacing.sm,
   },
   sliderThumb: {
-    backgroundColor: '#2196F3',
+    backgroundColor: theme.colors.primary,
   },
   sliderTrack: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: theme.colors.border,
   },
   matchCard: {
-    borderRadius: 10,
-    marginBottom: 10,
-    marginHorizontal: 15,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
+    marginHorizontal: theme.spacing.md,
   },
   matchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: theme.spacing.sm,
   },
   matchInfo: {
     flex: 1,
   },
   matchTitle: {
-    fontSize: 18,
+    fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   sportName: {
-    fontSize: 16,
-    color: '#2196F3',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.primary,
     fontWeight: '500',
-    marginBottom: 5,
+    marginBottom: theme.spacing.xs,
   },
   locationContainer: {
-    marginTop: 5,
+    marginTop: theme.spacing.xs,
   },
   distance: {
-    fontSize: 12,
-    color: '#2196F3',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
     fontWeight: 'bold',
   },
   locationName: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
   },
   badges: {
     alignItems: 'flex-end',
   },
   statusBadge: {
-    marginBottom: 5,
+    marginBottom: theme.spacing.xs,
   },
   skillBadge: {
-    marginBottom: 5,
+    marginBottom: theme.spacing.xs,
   },
   description: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
     lineHeight: 20,
   },
   matchDetails: {
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 5,
+    marginBottom: theme.spacing.xs,
   },
   detailLabel: {
-    fontSize: 14,
+    fontSize: theme.fontSize.sm,
     fontWeight: '500',
-    color: '#333',
+    color: theme.colors.text,
   },
   detailValue: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   actionButton: {
-    paddingHorizontal: 20,
-    marginHorizontal: 5,
+    paddingHorizontal: theme.spacing.lg,
+    marginHorizontal: theme.spacing.xs,
   },
   joinButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.success,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    paddingVertical: theme.spacing.xxl,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: theme.spacing.lg,
   },
   refreshButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 30,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
   },
   emptyList: {
     flexGrow: 1,

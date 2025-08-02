@@ -27,6 +27,7 @@ import { useFriends } from '../contexts/FriendsContext';
 import { locationService } from '../services/locationService';
 import { sportsService } from '../services/sportsService';
 import { FriendRequestNotification, MatchInvitationNotification } from '../components';
+import { useAppTheme } from '../hooks/useThemeColors';
 import {
   Profile,
   Sport,
@@ -57,6 +58,7 @@ const { width } = Dimensions.get('window');
 export const NearbyPeopleScreen: React.FC = () => {
   const { location, loading: locationLoading, updateLocation } = useLocation();
   const { user, session } = useAuth();
+  const theme = useAppTheme();
   const {
     friends,
     pendingRequests,
@@ -84,10 +86,12 @@ export const NearbyPeopleScreen: React.FC = () => {
   const sportOptions = ['All Sports', ...sports.map(sport => sport.name)];
   const skillLevels = ['Any Level', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
   const tabs = ['Nearby', 'Friends', 'Search'];
+  
+  const styles = createStyles(theme);
 
   // Memoize icon objects to prevent SearchBar re-renders
-  const searchIcon = useMemo(() => ({ name: 'search', size: 20, color: '#666' }), []);
-  const clearIcon = useMemo(() => ({ name: 'clear', size: 20, color: '#666' }), []);
+  const searchIcon = useMemo(() => ({ name: 'search', size: 20, color: theme.colors.textSecondary }), [theme.colors.textSecondary]);
+  const clearIcon = useMemo(() => ({ name: 'clear', size: 20, color: theme.colors.textSecondary }), [theme.colors.textSecondary]);
 
   useEffect(() => {
     loadSports();
@@ -255,11 +259,11 @@ export const NearbyPeopleScreen: React.FC = () => {
 
   const getSkillLevelColor = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'beginner': return '#4CAF50';
-      case 'intermediate': return '#FF9800';
-      case 'advanced': return '#2196F3';
-      case 'expert': return '#9C27B0';
-      default: return '#666';
+      case 'beginner': return theme.colors.success;
+      case 'intermediate': return theme.colors.warning;
+      case 'advanced': return theme.colors.primary;
+      case 'expert': return theme.colors.secondary;
+      default: return theme.colors.textSecondary;
     }
   };
 
@@ -270,40 +274,40 @@ export const NearbyPeopleScreen: React.FC = () => {
           return (
             <Button
               title="Friends"
-              buttonStyle={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
-              titleStyle={{ color: 'white', fontSize: 20 }}
+              buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.success }]}
+              titleStyle={{ color: theme.colors.surface, fontSize: 20 }}
               disabled
-              icon={<Ionicons name="checkmark" size={16} color="white" style={{ marginRight: 5 }} />}
+              icon={<Ionicons name="checkmark" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
             />
           );
         case 'request_sent':
           return (
             <Button
               title="Request Sent"
-              buttonStyle={[styles.actionButton, { backgroundColor: '#FF9800' }]}
-              titleStyle={{ color: 'white', fontSize: 14 }}
+              buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.warning }]}
+              titleStyle={{ color: theme.colors.surface, fontSize: 14 }}
               disabled
-              icon={<Ionicons name="time" size={16} color="white" style={{ marginRight: 5 }} />}
+              icon={<Ionicons name="time" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
             />
           );
         case 'request_received':
           return (
             <Button
               title="Accept Request"
-              buttonStyle={[styles.actionButton, { backgroundColor: '#2196F3' }]}
-              titleStyle={{ color: 'white', fontSize: 14 }}
+              buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
+              titleStyle={{ color: theme.colors.surface, fontSize: 14 }}
               onPress={() => item.connection_id && handleAcceptFriendRequest(item.connection_id)}
-              icon={<Ionicons name="person-add" size={16} color="white" style={{ marginRight: 5 }} />}
+              icon={<Ionicons name="person-add" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
             />
           );
         default:
           return (
             <Button
               title="Add Friend"
-              buttonStyle={[styles.actionButton, { backgroundColor: '#2196F3' }]}
-              titleStyle={{ color: 'white', fontSize: 14 }}
+              buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
+              titleStyle={{ color: theme.colors.surface, fontSize: 14 }}
               onPress={() => handleSendFriendRequest(item.id)}
-              icon={<Ionicons name="person-add" size={16} color="white" style={{ marginRight: 5 }} />}
+              icon={<Ionicons name="person-add" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
             />
           );
       }
@@ -312,10 +316,10 @@ export const NearbyPeopleScreen: React.FC = () => {
     return (
       <Button
         title="Send Message"
-        buttonStyle={[styles.actionButton, { backgroundColor: '#2196F3' }]}
-        titleStyle={{ color: 'white', fontSize: 14 }}
+        buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
+        titleStyle={{ color: theme.colors.surface, fontSize: 14 }}
         onPress={() => console.log('Send message to:', item.id)}
-        icon={<Ionicons name="chatbubble-outline" size={16} color="white" style={{ marginRight: 5 }} />}
+        icon={<Ionicons name="chatbubble-outline" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
       />
     );
   };
@@ -335,9 +339,9 @@ export const NearbyPeopleScreen: React.FC = () => {
               title={getInitials(profile.full_name || profile.username)}
               containerStyle={[
                 styles.avatar,
-                { backgroundColor: profile.avatar_url ? 'transparent' : '#2196F3' }
+                { backgroundColor: profile.avatar_url ? 'transparent' : theme.colors.primary }
               ]}
-              titleStyle={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}
+              titleStyle={{ color: theme.colors.surface, fontSize: 18, fontWeight: 'bold' }}
             />
             <View style={styles.userInfo}>
               <Text style={styles.username}>{profile.username}</Text>
@@ -345,7 +349,7 @@ export const NearbyPeopleScreen: React.FC = () => {
                 <Text style={styles.fullName}>{profile.full_name}</Text>
               )}
               <View style={styles.locationContainer}>
-                <Icon name="location-on" size={16} color="#666" />
+                <Icon name="location-on" size={16} color={theme.colors.textSecondary} />
                 <Text style={styles.distance}>
                   {isNearbyUser
                     ? `${formatDistance((item as NearbyUser).distance)} away`
@@ -382,17 +386,17 @@ export const NearbyPeopleScreen: React.FC = () => {
             type="clear"
             buttonStyle={styles.actionButton}
             titleStyle={styles.clearButtonText}
-            icon={<Ionicons name="person-outline" size={16} color="#2196F3" style={{ marginRight: 5 }} />}
+            icon={<Ionicons name="person-outline" size={16} color={theme.colors.primary} style={{ marginRight: theme.spacing.xs }} />}
             onPress={() => console.log('View profile:', profile.id)}
           />
 
           {activeTab === 1 ? (
             <Button
               title="Remove"
-              buttonStyle={[styles.actionButton, { backgroundColor: '#f44336' }]}
-              titleStyle={{ color: 'white', fontSize: 14 }}
+              buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.error }]}
+              titleStyle={{ color: theme.colors.surface, fontSize: 14 }}
               onPress={() => handleRemoveFriend(profile.id)}
-              icon={<Ionicons name="person-remove" size={16} color="white" style={{ marginRight: 5 }} />}
+              icon={<Ionicons name="person-remove" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
             />
           ) : (
             getActionButton(item as UserSearchResult | NearbyUser)
@@ -411,8 +415,8 @@ export const NearbyPeopleScreen: React.FC = () => {
             size="large"
             source={item.user.avatar_url ? { uri: item.user.avatar_url } : undefined}
             title={getInitials(item.user.full_name || item.user.username)}
-            containerStyle={[styles.avatar, { backgroundColor: '#2196F3' }]}
-            titleStyle={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}
+            containerStyle={[styles.avatar, { backgroundColor: theme.colors.primary }]}
+            titleStyle={{ color: theme.colors.surface, fontSize: 18, fontWeight: 'bold' }}
           />
           <View style={styles.userInfo}>
             <Text style={styles.username}>{item.user.username}</Text>
@@ -429,17 +433,17 @@ export const NearbyPeopleScreen: React.FC = () => {
       <View style={styles.actionButtons}>
         <Button
           title="Accept"
-          buttonStyle={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
-          titleStyle={{ color: 'white', fontSize: 14 }}
+          buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.success }]}
+          titleStyle={{ color: theme.colors.surface, fontSize: 14 }}
           onPress={() => handleAcceptFriendRequest(item.id)}
-          icon={<Ionicons name="checkmark" size={16} color="white" style={{ marginRight: 5 }} />}
+          icon={<Ionicons name="checkmark" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
         />
         <Button
           title="Reject"
-          buttonStyle={[styles.actionButton, { backgroundColor: '#f44336' }]}
-          titleStyle={{ color: 'white', fontSize: 14 }}
+          buttonStyle={[styles.actionButton, { backgroundColor: theme.colors.error }]}
+          titleStyle={{ color: theme.colors.surface, fontSize: 14 }}
           onPress={() => handleRejectFriendRequest(item.id)}
-          icon={<Ionicons name="close" size={16} color="white" style={{ marginRight: 5 }} />}
+          icon={<Ionicons name="close" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
         />
       </View>
     </Card>
@@ -515,14 +519,14 @@ export const NearbyPeopleScreen: React.FC = () => {
               onPress={toggleFilters}
               activeOpacity={0.7}
             >
-              <Icon name="tune" size={20} color="#2196F3" />
+              <Icon name="tune" size={20} color={theme.colors.primary} />
               <Text style={styles.filterToggleText}>
                 {showFilters ? 'Hide Filters' : 'Show Filters'}
               </Text>
               <Icon
                 name={showFilters ? 'expand-less' : 'expand-more'}
                 size={20}
-                color="#2196F3"
+                color={theme.colors.primary}
               />
             </TouchableOpacity>
           </View>
@@ -541,7 +545,7 @@ export const NearbyPeopleScreen: React.FC = () => {
           >
             <View style={styles.filterSection}>
               <View style={styles.filterLabelContainer}>
-                <Icon name="sports" size={16} color="#666" />
+                <Icon name="sports" size={16} color={theme.colors.textSecondary} />
                 <Text style={styles.filterLabel}>Sport</Text>
               </View>
               <ButtonGroup
@@ -558,7 +562,7 @@ export const NearbyPeopleScreen: React.FC = () => {
 
             <View style={styles.filterSection}>
               <View style={styles.filterLabelContainer}>
-                <Icon name="trending-up" size={16} color="#666" />
+                <Icon name="trending-up" size={16} color={theme.colors.textSecondary} />
                 <Text style={styles.filterLabel}>Skill Level</Text>
               </View>
               <ButtonGroup
@@ -574,7 +578,7 @@ export const NearbyPeopleScreen: React.FC = () => {
 
             <View style={styles.filterSection}>
               <View style={styles.filterLabelContainer}>
-                <Icon name="location-on" size={16} color="#666" />
+                <Icon name="location-on" size={16} color={theme.colors.textSecondary} />
                 <Text style={styles.filterLabel}>Search Radius: {formatDistance(searchRadius)}</Text>
               </View>
               <Slider
@@ -585,7 +589,7 @@ export const NearbyPeopleScreen: React.FC = () => {
                 step={1000}
                 thumbStyle={styles.sliderThumb}
                 trackStyle={styles.sliderTrack}
-                minimumTrackTintColor="#2196F3"
+                minimumTrackTintColor={theme.colors.primary}
                 style={styles.slider}
               />
               <View style={styles.sliderLabels}>
@@ -631,7 +635,7 @@ export const NearbyPeopleScreen: React.FC = () => {
             buttonStyle={styles.refreshButton}
             titleStyle={styles.refreshButtonText}
             onPress={onRefresh}
-            icon={<Ionicons name="refresh" size={16} color="white" style={{ marginRight: 5 }} />}
+            icon={<Ionicons name="refresh" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
           />
         </View>
       ) : (
@@ -709,8 +713,8 @@ export const NearbyPeopleScreen: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#2196F3']}
-            tintColor="#2196F3"
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
           />
         }
         ListEmptyComponent={getEmptyComponent()}
@@ -721,72 +725,72 @@ export const NearbyPeopleScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 40,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.xl,
   },
   loadingText: {
-    fontSize: 18,
+    fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
-    color: '#333',
-    marginTop: 20,
+    color: theme.colors.text,
+    marginTop: theme.spacing.lg,
     textAlign: 'center',
   },
   loadingSubtext: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
     textAlign: 'center',
     lineHeight: 20,
   },
   header: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 15,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
   },
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: theme.spacing.lg,
   },
   title: {
-    fontSize: 24,
+    fontSize: theme.fontSize.xl,
     fontWeight: 'bold',
-    color: '#2196F3',
-    marginBottom: 5,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   tabContainer: {
-    marginBottom: 15,
-    borderRadius: 8,
-    borderColor: '#e0e0e0',
+    marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    borderColor: theme.colors.border,
   },
   tabButton: {
-    backgroundColor: 'white',
-    paddingVertical: 10,
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.sm,
   },
   tabText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   selectedTabButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: theme.colors.primary,
   },
   selectedTabText: {
-    color: 'white',
+    color: theme.colors.surface,
     fontWeight: 'bold',
   },
   pendingRequestsHeader: {
@@ -807,15 +811,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderBottomWidth: 0,
     paddingHorizontal: 0,
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
   },
   searchInput: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.background,
     borderRadius: 25,
-    paddingHorizontal: 15,
+    paddingHorizontal: theme.spacing.md,
   },
   searchInputText: {
-    fontSize: 16,
+    fontSize: theme.fontSize.md,
   },
   filterToggleContainer: {
     alignItems: 'center',
@@ -899,9 +903,9 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   userCard: {
-    borderRadius: 12,
-    marginBottom: 15,
-    marginHorizontal: 20,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.md,
+    marginHorizontal: theme.spacing.lg,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -910,15 +914,15 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   cardHeader: {
-    marginBottom: 15,
+    marginBottom: theme.spacing.md,
   },
   userHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: theme.spacing.sm,
   },
   avatar: {
-    marginRight: 15,
+    marginRight: theme.spacing.md,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -929,15 +933,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   username: {
-    fontSize: 18,
+    fontSize: theme.fontSize.lg,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 2,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   fullName: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -945,10 +949,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   distance: {
-    fontSize: 14,
-    color: '#2196F3',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
     fontWeight: '600',
-    marginLeft: 4,
+    marginLeft: theme.spacing.xs,
   },
   requestTime: {
     fontSize: 12,
@@ -989,8 +993,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   clearButtonText: {
-    color: '#2196F3',
-    fontSize: 14,
+    color: theme.colors.primary,
+    fontSize: theme.fontSize.sm,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -1016,9 +1020,9 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   refreshButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.sm,
     borderRadius: 25,
   },
   refreshButtonText: {

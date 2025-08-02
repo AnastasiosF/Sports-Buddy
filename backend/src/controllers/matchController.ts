@@ -1275,7 +1275,7 @@ export const getJoinRequests = async (req: Request, res: Response) => {
         match_id,
         user_id,
         status,
-        joined_at as created_at,
+        joined_at,
         match:matches (
           id,
           title,

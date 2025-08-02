@@ -104,7 +104,7 @@ const MainDashboardScreen: React.FC = () => {
   const colors = useThemeColors();
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <TabHeader />
+      <TabHeader title='Home'/>
       <MainDashboard />
       <FAB />
     </View>

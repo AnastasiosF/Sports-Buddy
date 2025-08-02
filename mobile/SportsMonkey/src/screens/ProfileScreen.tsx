@@ -103,10 +103,7 @@ export const ProfileScreen: React.FC = () => {
           />
         }
       >
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.headerTitle, { color: 'white' }]}>Profile</Text>
-        </View>
+      
 
         {/* Profile Card */}
         <Card containerStyle={styles.profileCard}>
