@@ -303,7 +303,8 @@ RETURNS TABLE (
   distance_meters DOUBLE PRECISION,
   mutual_sports_count INTEGER,
   mutual_friends_count INTEGER,
-  suggestion_score DOUBLE PRECISION
+  suggestion_score DOUBLE PRECISION,
+  relationship_status VARCHAR(20)
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -334,6 +335,7 @@ BEGIN
       p.bio,
       p.skill_level,
       p.location_name,
+      p.location,
       ST_Distance(p.location, user_location) as distance_meters
     FROM profiles p
     WHERE p.location IS NOT NULL
@@ -346,7 +348,7 @@ BEGIN
       nu.*,
       -- Count mutual sports interests
       COALESCE((
-        SELECT COUNT(*)
+        SELECT COUNT(*)::INTEGER
         FROM user_sports candidate_sports
         JOIN user_sports_cte current_user_sports ON current_user_sports.sport_id = candidate_sports.sport_id
         WHERE candidate_sports.user_id = nu.id
@@ -354,7 +356,7 @@ BEGIN
       
       -- Count mutual friends
       COALESCE((
-        SELECT COUNT(*)
+        SELECT COUNT(*)::INTEGER
         FROM user_connections uc
         JOIN user_friends_cte uf ON (
           (uc.user_id = nu.id AND uc.friend_id = uf.friend_id) OR
@@ -363,6 +365,21 @@ BEGIN
         WHERE uc.status = 'accepted'
       ), 0) as mutual_friends_count,
       
+      -- Check relationship status with current user
+      COALESCE((
+        SELECT 
+          CASE 
+            WHEN uc.status = 'accepted' THEN 'friends'
+            WHEN uc.user_id = current_user_id THEN 'request_sent'
+            WHEN uc.friend_id = current_user_id THEN 'request_received'
+            ELSE 'none'
+          END::VARCHAR(20)
+        FROM user_connections uc
+        WHERE (uc.user_id = current_user_id AND uc.friend_id = nu.id)
+           OR (uc.user_id = nu.id AND uc.friend_id = current_user_id)
+        LIMIT 1
+      ), 'none'::VARCHAR(20)) as relationship_status,
+      
       -- Calculate suggestion score (higher is better)
       (
         -- Distance score (closer = higher score, max 50 points)
@@ -370,7 +387,7 @@ BEGIN
         
         -- Mutual sports score (each mutual sport = 30 points)
         COALESCE((
-          SELECT COUNT(*) * 30
+          SELECT COUNT(*)::INTEGER * 30
           FROM user_sports candidate_sports
           JOIN user_sports_cte current_user_sports ON current_user_sports.sport_id = candidate_sports.sport_id
           WHERE candidate_sports.user_id = nu.id
@@ -378,7 +395,7 @@ BEGIN
         
         -- Mutual friends score (each mutual friend = 20 points)
         COALESCE((
-          SELECT COUNT(*) * 20
+          SELECT COUNT(*)::INTEGER * 20
           FROM user_connections uc
           JOIN user_friends_cte uf ON (
             (uc.user_id = nu.id AND uc.friend_id = uf.friend_id) OR
@@ -408,9 +425,11 @@ BEGIN
     sws.distance_meters,
     sws.mutual_sports_count,
     sws.mutual_friends_count,
-    sws.suggestion_score
+    sws.suggestion_score,
+    sws.relationship_status
   FROM suggestions_with_scores sws
   WHERE sws.suggestion_score > 10 -- Only return suggestions with meaningful connections
+    AND sws.relationship_status != 'friends' -- Don't suggest existing friends
   ORDER BY sws.suggestion_score DESC, sws.distance_meters ASC
   LIMIT 20;
 END;

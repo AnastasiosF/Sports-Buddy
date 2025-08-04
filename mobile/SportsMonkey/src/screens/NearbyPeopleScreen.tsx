@@ -41,6 +41,15 @@ interface NearbyUser extends Profile {
   distance: number;
 }
 
+interface FriendSuggestion extends Profile {
+  distance_km: number;
+  distance_meters: number;
+  mutual_sports_count: number;
+  mutual_friends_count: number;
+  suggestion_score: number;
+  relationship_status: 'friends' | 'request_sent' | 'request_received' | 'none';
+}
+
 interface Friend {
   connection_id: string;
   friend: Profile;
@@ -82,7 +91,7 @@ export const NearbyPeopleScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0); // 0: Nearby, 1: Friends, 2: Suggestions, 3: Search
   const [isSearching, setIsSearching] = useState(false);
   const [nearbySearchText, setNearbySearchText] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<FriendSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const sportOptions = ['All Sports', ...sports.map(sport => sport.name)];
@@ -297,7 +306,7 @@ export const NearbyPeopleScreen: React.FC = () => {
     }
   };
 
-  const getActionButton = (item: UserSearchResult | NearbyUser) => {
+  const getActionButton = (item: UserSearchResult | NearbyUser | FriendSuggestion) => {
     if ('relationship_status' in item) {
       switch (item.relationship_status) {
         case 'friends':
@@ -354,7 +363,7 @@ export const NearbyPeopleScreen: React.FC = () => {
     );
   };
 
-  const renderUserItem = ({ item }: { item: NearbyUser | UserSearchResult | Friend }) => {
+  const renderUserItem = ({ item }: { item: NearbyUser | UserSearchResult | Friend | FriendSuggestion }) => {
     const profile = 'friend' in item ? item.friend : item;
     const isNearbyUser = 'distance' in item;
     const isSuggestion = activeTab === 2 && 'suggestion_score' in item;
@@ -453,7 +462,7 @@ export const NearbyPeopleScreen: React.FC = () => {
               icon={<Ionicons name="person-remove" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
             />
           ) : (
-            getActionButton(item as UserSearchResult | NearbyUser)
+            getActionButton(item as UserSearchResult | NearbyUser | FriendSuggestion)
           )}
         </View>
       </Card>
@@ -784,7 +793,7 @@ export const NearbyPeopleScreen: React.FC = () => {
           return renderUserItem({
             item: activeTab === 1 && pendingRequests.length > 0
               ? (getCurrentData()[index - pendingRequests.length] as Friend)
-              : item as NearbyUser | UserSearchResult | Friend
+              : item as NearbyUser | UserSearchResult | Friend | FriendSuggestion
           });
         }}
         keyExtractor={(item, index) =>
