@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { logger, stream } from './config/logger';
+import { requestLogger, performanceLogger } from './middleware/logging';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -53,20 +55,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(morgan('combined'));
+// Use winston for HTTP request logging
+app.use(morgan('combined', { stream }));
+
+// Custom request and performance logging middleware
+app.use(requestLogger);
+app.use(performanceLogger);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Add request logging middleware for debugging
-app.use((req, res, next) => {
-  if (req.path.includes('/profiles/sports') || req.path.includes('/friends/request')) {
-    console.log('🔍 REQUEST:', req.method, req.path);
-    console.log('🔍 HEADERS:', req.headers.authorization ? 'Has Auth Header' : 'No Auth Header');
-    console.log('🔍 CONTENT-TYPE:', req.headers['content-type']);
-    console.log('🔍 BODY:', req.body);
-  }
-  next();
-});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -89,9 +86,12 @@ app.use(globalErrorHandler);
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📊 Health check available at: http://localhost:${PORT}/health`);
-  console.log(`🔒 Security features: Rate limiting, Authentication`);
+  logger.info('Server started successfully', {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    healthEndpoint: `http://localhost:${PORT}/health`,
+    timestamp: new Date().toISOString()
+  });
 });
 
 export default app;

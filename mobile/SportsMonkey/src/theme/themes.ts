@@ -2,12 +2,12 @@ import { createTheme } from '@rneui/themed';
 
 const baseTheme = {
   colors: {
-    primary: '#2196F3',
-    secondary: '#FF9800',
-    success: '#4CAF50',
-    warning: '#FF9800',
-    error: '#F44336',
-    info: '#2196F3',
+    primary: '#2563EB',     // Vibrant blue
+    secondary: '#1E40AF',   // Deeper blue
+    success: '#059669',     // Emerald green
+    warning: '#D97706',     // Orange (complementary to blue)
+    error: '#DC2626',       // Modern red
+    info: '#0EA5E9',        // Sky blue
   },
   spacing: {
     xs: 4,
@@ -32,15 +32,15 @@ export const lightTheme = createTheme({
     warning: baseTheme.colors.warning,
     error: baseTheme.colors.error,
     // Use the built-in RNE color names
-    background: '#FFFFFF',
-    disabled: '#999999',
-    divider: '#E0E0E0',
-    grey0: '#333333',
-    grey1: '#666666',
-    grey2: '#999999',
-    grey3: '#E0E0E0',
-    grey4: '#F5F5F5',
-    grey5: '#FFFFFF',
+    background: '#F8FAFC',  // Blue-tinted white
+    disabled: '#94A3B8',    // Blue-gray
+    divider: '#E2E8F0',     // Light blue-gray border
+    grey0: '#1E293B',       // Dark blue-gray
+    grey1: '#64748B',       // Medium blue-gray  
+    grey2: '#94A3B8',       // Light blue-gray
+    grey3: '#E2E8F0',       // Very light blue-gray
+    grey4: '#F8FAFC',       // Blue-tinted off-white
+    grey5: '#FFFFFF',       // Pure white
   },
   components: {
     Button: {
@@ -78,21 +78,21 @@ export const lightTheme = createTheme({
 
 export const darkTheme = createTheme({
   darkColors: {
-    primary: baseTheme.colors.primary,
-    secondary: baseTheme.colors.secondary,
+    primary: '#60A5FA',     // Lighter blue for dark mode
+    secondary: '#3B82F6',   // Medium blue
     success: baseTheme.colors.success,
     warning: baseTheme.colors.warning,
     error: baseTheme.colors.error,
     // Use the built-in RNE color names
-    background: '#121212',
-    disabled: '#666666',
-    divider: '#333333',
-    grey0: '#FFFFFF',
-    grey1: '#CCCCCC',
-    grey2: '#999999',
-    grey3: '#666666',
-    grey4: '#333333',
-    grey5: '#1E1E1E',
+    background: '#0F172A',  // Dark blue-gray
+    disabled: '#64748B',    // Blue-gray-500
+    divider: '#334155',     // Blue-gray-700
+    grey0: '#F1F5F9',       // Light blue-gray
+    grey1: '#CBD5E1',       // Blue-gray-300
+    grey2: '#94A3B8',       // Blue-gray-400
+    grey3: '#64748B',       // Blue-gray-500
+    grey4: '#1E293B',       // Blue-gray-800
+    grey5: '#0F172A',       // Dark blue-gray
   },
   components: {
     Button: {

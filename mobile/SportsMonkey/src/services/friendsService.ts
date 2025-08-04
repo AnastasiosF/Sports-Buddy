@@ -104,6 +104,20 @@ class FriendsService {
       },
     });
   }
+
+  // Get friend suggestions
+  async getFriendSuggestions(
+    radius: number = 10,
+    token: string
+  ): Promise<{ suggestions: any[] }> {
+    const params = new URLSearchParams({ radius: radius.toString() });
+    return this.request<{ suggestions: any[] }>(`/suggestions?${params}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
 }
 
 export const friendsService = new FriendsService();

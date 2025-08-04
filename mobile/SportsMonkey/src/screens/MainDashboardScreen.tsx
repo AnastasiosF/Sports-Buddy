@@ -533,7 +533,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   quickActionsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     marginTop: theme.spacing.sm,
     gap: theme.spacing.sm,
   },
@@ -541,7 +541,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flex: 1,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
-    minHeight: 60,
+    flexBasis: '100%'
   },
   quickActionButtonText: {
     color: theme.colors.surface,

@@ -6,7 +6,8 @@ import {
   removeFriend,
   getFriends,
   getPendingRequests,
-  searchUsers
+  searchUsers,
+  getFriendSuggestions
 } from '../controllers/friendsController';
 import { authenticateUser } from '../middleware/auth';
 
@@ -29,5 +30,8 @@ router.get('/requests', getPendingRequests);
 
 // Search users
 router.get('/search', searchUsers);
+
+// Friend suggestions
+router.get('/suggestions', getFriendSuggestions);
 
 export default router;

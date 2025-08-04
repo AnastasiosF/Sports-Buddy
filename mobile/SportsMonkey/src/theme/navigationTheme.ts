@@ -25,20 +25,20 @@ export const lightNavigationTheme: CombinedTheme = {
   dark: false,
   colors: {
     // React Navigation required colors
-    primary: '#2196F3',
-    background: '#FFFFFF',
-    card: '#FFFFFF',
-    text: '#333333',
-    border: '#E0E0E0',
-    notification: '#2196F3',
+    primary: '#2563EB',     // Vibrant blue
+    background: '#F8FAFC',  // Blue-tinted white
+    card: '#FFFFFF',        // Pure white
+    text: '#1E293B',        // Dark blue-gray
+    border: '#E2E8F0',      // Light blue-gray
+    notification: '#0EA5E9', // Sky blue
     // Additional theme colors that match our RNE theme
-    surface: '#F5F5F5',
-    textSecondary: '#666666',
-    textDisabled: '#999999',
-    success: '#4CAF50',
-    warning: '#FF9800',
-    error: '#F44336',
-    secondary: '#FF9800',
+    surface: '#FFFFFF',     // Pure white surface
+    textSecondary: '#64748B', // Medium blue-gray
+    textDisabled: '#94A3B8', // Light blue-gray
+    success: '#059669',     // Emerald green
+    warning: '#D97706',     // Orange (complementary to blue)
+    error: '#DC2626',       // Modern red
+    secondary: '#1E40AF',   // Deeper blue
   },
 };
 
@@ -46,20 +46,20 @@ export const darkNavigationTheme: CombinedTheme = {
   dark: true,
   colors: {
     // React Navigation required colors
-    primary: '#2196F3',
-    background: '#121212',
-    card: '#1E1E1E',
-    text: '#FFFFFF',
-    border: '#333333',
-    notification: '#2196F3',
+    primary: '#60A5FA',     // Lighter blue for dark mode
+    background: '#0F172A',  // Dark blue-gray
+    card: '#1E293B',        // Blue-gray-800
+    text: '#F1F5F9',        // Light blue-gray
+    border: '#334155',      // Blue-gray-700
+    notification: '#0EA5E9', // Sky blue
     // Additional theme colors that match our RNE theme
-    surface: '#1E1E1E',
-    textSecondary: '#CCCCCC',
-    textDisabled: '#666666',
-    success: '#4CAF50',
-    warning: '#FF9800',
-    error: '#F44336',
-    secondary: '#FF9800',
+    surface: '#1E293B',     // Blue-gray-800 surface
+    textSecondary: '#CBD5E1', // Blue-gray-300
+    textDisabled: '#64748B', // Blue-gray-500
+    success: '#059669',     // Emerald green
+    warning: '#D97706',     // Orange (complementary to blue)
+    error: '#DC2626',       // Modern red
+    secondary: '#3B82F6',   // Medium blue
   },
 };
 

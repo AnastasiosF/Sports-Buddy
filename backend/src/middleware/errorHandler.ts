@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../config/logger';
 
 // Error interface
 interface AppError extends Error {
@@ -13,13 +14,16 @@ export const globalErrorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  // Log error for debugging
-  console.error('Error occurred:', {
+  // Log error with structured logging
+  logger.error('Request error occurred', {
     message: error.message,
     stack: error.stack,
     url: req.url,
     method: req.method,
     ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    statusCode: error.statusCode || 500,
+    isOperational: error.isOperational || false,
     timestamp: new Date().toISOString()
   });
 
@@ -67,6 +71,14 @@ export const globalErrorHandler = (
 
 // 404 handler for undefined routes
 export const notFoundHandler = (req: Request, res: Response) => {
+  logger.warn('Route not found', {
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    timestamp: new Date().toISOString()
+  });
+  
   res.status(404).json({
     error: `Route ${req.originalUrl} not found`,
     message: 'The requested resource does not exist'

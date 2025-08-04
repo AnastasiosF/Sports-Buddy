@@ -79,13 +79,15 @@ export const NearbyPeopleScreen: React.FC = () => {
   const [searchRadius, setSearchRadius] = useState(10000);
   const [showFilters, setShowFilters] = useState(false);
   const [filterAnimation] = useState(new Animated.Value(0));
-  const [activeTab, setActiveTab] = useState(0); // 0: Nearby, 1: Friends, 2: Search
+  const [activeTab, setActiveTab] = useState(0); // 0: Nearby, 1: Friends, 2: Suggestions, 3: Search
   const [isSearching, setIsSearching] = useState(false);
   const [nearbySearchText, setNearbySearchText] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const sportOptions = ['All Sports', ...sports.map(sport => sport.name)];
   const skillLevels = ['Any Level', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
-  const tabs = ['Nearby', 'Friends', 'Search'];
+  const tabs = ['Nearby', 'Friends', 'Suggestions', 'Search'];
   
   const styles = createStyles(theme);
 
@@ -104,12 +106,14 @@ export const NearbyPeopleScreen: React.FC = () => {
   }, [location, selectedSportIndex, skillLevelIndex, searchRadius, activeTab]);
 
   useEffect(() => {
-    if (activeTab === 2 && searchText.length >= 3) {
+    if (activeTab === 2) {
+      loadFriendSuggestions();
+    } else if (activeTab === 3 && searchText.length >= 3) {
       const timeoutId = setTimeout(() => {
         handleUserSearch();
       }, 800); // Increased debounce time for better UX
       return () => clearTimeout(timeoutId);
-    } else if (activeTab === 2 && searchText.length < 3) {
+    } else if (activeTab === 3 && searchText.length < 3) {
       setSearchResults([]);
       setIsSearching(false);
     }
@@ -121,6 +125,25 @@ export const NearbyPeopleScreen: React.FC = () => {
       setSports(sportsData);
     } catch (error) {
       console.error('Failed to load sports:', error);
+    }
+  };
+
+  const loadFriendSuggestions = async () => {
+    if (!session?.access_token) return;
+
+    setLoadingSuggestions(true);
+    try {
+      const { friendsService } = await import('../services/friendsService');
+      const response = await friendsService.getFriendSuggestions(
+        searchRadius / 1000, // Convert to km
+        session.access_token
+      );
+      setSuggestions(response.suggestions);
+    } catch (error) {
+      console.error('Failed to load friend suggestions:', error);
+      Alert.alert('Error', 'Unable to load friend suggestions. Please try again.');
+    } finally {
+      setLoadingSuggestions(false);
     }
   };
 
@@ -169,7 +192,7 @@ export const NearbyPeopleScreen: React.FC = () => {
   };
 
   const handleSearchSubmit = () => {
-    if (activeTab === 2 && searchText.trim().length >= 2) {
+    if (activeTab === 3 && searchText.trim().length >= 2) {
       handleUserSearch(true);
     }
   };
@@ -179,8 +202,13 @@ export const NearbyPeopleScreen: React.FC = () => {
       await sendFriendRequest(friendId);
       Alert.alert('Success', 'Friend request sent!');
 
-      // Update search results
+      // Update search results and suggestions
       setSearchResults(prev => prev.map(user =>
+        user.id === friendId
+          ? { ...user, relationship_status: 'request_sent' }
+          : user
+      ));
+      setSuggestions(prev => prev.map(user =>
         user.id === friendId
           ? { ...user, relationship_status: 'request_sent' }
           : user
@@ -251,7 +279,9 @@ export const NearbyPeopleScreen: React.FC = () => {
       await searchNearbyUsers();
     } else if (activeTab === 1) {
       await refreshAll();
-    } else if (activeTab === 2 && searchText.length >= 3) {
+    } else if (activeTab === 2) {
+      await loadFriendSuggestions();
+    } else if (activeTab === 3 && searchText.length >= 3) {
       await handleUserSearch();
     }
     setRefreshing(false);
@@ -327,6 +357,7 @@ export const NearbyPeopleScreen: React.FC = () => {
   const renderUserItem = ({ item }: { item: NearbyUser | UserSearchResult | Friend }) => {
     const profile = 'friend' in item ? item.friend : item;
     const isNearbyUser = 'distance' in item;
+    const isSuggestion = activeTab === 2 && 'suggestion_score' in item;
 
     return (
       <Card containerStyle={styles.userCard}>
@@ -351,16 +382,39 @@ export const NearbyPeopleScreen: React.FC = () => {
               <View style={styles.locationContainer}>
                 <Icon name="location-on" size={16} color={theme.colors.textSecondary} />
                 <Text style={styles.distance}>
-                  {isNearbyUser
-                    ? `${formatDistance((item as NearbyUser).distance)} away`
+                  {isNearbyUser || isSuggestion
+                    ? `${formatDistance(isSuggestion ? ((item as any).distance_km * 1000) : (item as NearbyUser).distance)} away`
                     : profile.location_name || 'Location not set'
                   }
                 </Text>
               </View>
+              {isSuggestion && (item as any).mutual_sports_count > 0 && (
+                <View style={styles.locationContainer}>
+                  <Icon name="sports" size={16} color={theme.colors.success} />
+                  <Text style={[styles.distance, { color: theme.colors.success }]}>
+                    {(item as any).mutual_sports_count} mutual sport{(item as any).mutual_sports_count > 1 ? 's' : ''}
+                  </Text>
+                </View>
+              )}
+              {isSuggestion && (item as any).mutual_friends_count > 0 && (
+                <View style={styles.locationContainer}>
+                  <Icon name="people" size={16} color={theme.colors.secondary} />
+                  <Text style={[styles.distance, { color: theme.colors.secondary }]}>
+                    {(item as any).mutual_friends_count} mutual friend{(item as any).mutual_friends_count > 1 ? 's' : ''}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
           <View style={styles.badges}>
+            {isSuggestion && (
+              <Badge
+                value="Suggested"
+                badgeStyle={[styles.skillBadge, { backgroundColor: theme.colors.info }]}
+                textStyle={styles.badgeText}
+              />
+            )}
             {profile.skill_level && (
               <Badge
                 value={capitalize(profile.skill_level)}
@@ -454,11 +508,13 @@ export const NearbyPeopleScreen: React.FC = () => {
       <View style={styles.titleContainer}>
         <Text style={styles.title}>
           {activeTab === 0 ? 'Find Sports Buddies' :
-           activeTab === 1 ? 'My Friends' : 'Search Friends'}
+           activeTab === 1 ? 'My Friends' :
+           activeTab === 2 ? 'Friend Suggestions' : 'Search Friends'}
         </Text>
         <Text style={styles.subtitle}>
           {activeTab === 0 ? `${users.length} ${users.length === 1 ? 'person' : 'people'} nearby` :
            activeTab === 1 ? `${friends.length} ${friends.length === 1 ? 'friend' : 'friends'}` :
+           activeTab === 2 ? `${suggestions.length} ${suggestions.length === 1 ? 'suggestion' : 'suggestions'} found` :
            'Search by username'}
         </Text>
       </View>
@@ -484,7 +540,7 @@ export const NearbyPeopleScreen: React.FC = () => {
         </View>
       )}
 
-      {activeTab === 2 ? (
+      {activeTab === 3 ? (
         <SearchBar
           placeholder="Search by username... (Press enter to search)"
           value={searchText}
@@ -613,6 +669,8 @@ export const NearbyPeopleScreen: React.FC = () => {
       );
     } else if (activeTab === 1) {
       return friends;
+    } else if (activeTab === 2) {
+      return suggestions;
     } else {
       return searchResults;
     }
@@ -650,8 +708,34 @@ export const NearbyPeopleScreen: React.FC = () => {
           <Ionicons name="people-outline" size={64} color="#ccc" />
           <Text style={styles.emptyTitle}>No Friends Yet</Text>
           <Text style={styles.emptyText}>
-            Use the Search tab to find and add friends, or meet people in the Nearby tab!
+            Use the Search tab to find and add friends, or check out our Suggestions!
           </Text>
+        </View>
+      );
+    } else if (activeTab === 2) {
+      return !loadingSuggestions ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="bulb-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyTitle}>No Suggestions Found</Text>
+          <Text style={styles.emptyText}>
+            {!location 
+              ? 'Enable location access to get personalized friend suggestions based on your area and sports interests.'
+              : 'No suggestions available right now. Try expanding your search radius or check back later.'}
+          </Text>
+          {!location && (
+            <Button
+              title="Enable Location"
+              buttonStyle={styles.refreshButton}
+              titleStyle={styles.refreshButtonText}
+              onPress={() => updateLocation()}
+              icon={<Ionicons name="location" size={16} color={theme.colors.surface} style={{ marginRight: theme.spacing.xs }} />}
+            />
+          )}
+        </View>
+      ) : (
+        <View style={styles.searchingContainer}>
+          <Ionicons name="bulb" size={48} color="#2196F3" />
+          <Text style={styles.searchingText}>Finding personalized suggestions...</Text>
         </View>
       );
     } else {
